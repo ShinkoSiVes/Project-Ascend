@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Goal, NewGoal } from '../shared/goal';
+import type { PetState, PetUpdate, SpeciesId } from '../shared/pet';
 import type { NewSession, SessionState } from '../shared/session';
 import type { MoveDirection, NewTodo, Todo, TodoChanges } from '../shared/todo';
 
@@ -25,6 +26,20 @@ const api = {
     move: (input: { id: number; direction: MoveDirection }): Promise<Todo[]> =>
       ipcRenderer.invoke('todos:move', input),
     delete: (id: number): Promise<void> => ipcRenderer.invoke('todos:delete', id)
+  },
+  pet: {
+    // The chosen pet with its progress, or null before a starter has been picked.
+    get: (): Promise<PetState | null> => ipcRenderer.invoke('pet:get'),
+    choose: (input: { species: SpeciesId; name: string }): Promise<PetState> =>
+      ipcRenderer.invoke('pet:choose', input),
+    // Calls back whenever the pet earns XP. Returns a function that stops listening.
+    onChange: (callback: (update: PetUpdate) => void): (() => void) => {
+      const listener = (_event: IpcRendererEvent, update: PetUpdate): void => callback(update);
+      ipcRenderer.on('pet:changed', listener);
+      return () => {
+        ipcRenderer.removeListener('pet:changed', listener);
+      };
+    }
   },
   session: {
     // The unfinished session, or null if there is none.

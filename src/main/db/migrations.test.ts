@@ -20,7 +20,26 @@ describe('runMigrations', () => {
     runMigrations(db);
 
     expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
-    expect(tableNames(db)).toEqual(['goals', 'sessions', 'settings', 'todos']);
+    expect(tableNames(db)).toEqual(['goals', 'pets', 'sessions', 'settings', 'todos', 'xp_events']);
+  });
+
+  it('upgrades a version 3 database without losing goals or sessions', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations.slice(0, 3));
+    db.prepare(
+      "INSERT INTO goals (title, target_hours, difficulty, strictness) VALUES ('old goal', 2, 3, 'hard')"
+    ).run();
+    db.prepare(
+      "INSERT INTO sessions (goal_id, state, phase, last_seen_ms) VALUES (1, '{}', 'ended', 5)"
+    ).run();
+    expect(userVersion(db)).toBe(3);
+
+    runMigrations(db);
+
+    expect(userVersion(db)).toBe(4);
+    expect(tableNames(db)).toEqual(expect.arrayContaining(['pets', 'xp_events']));
+    expect((db.prepare('SELECT COUNT(*) AS n FROM goals').get() as { n: number }).n).toBe(1);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM sessions').get() as { n: number }).n).toBe(1);
   });
 
   it('upgrades a version 2 database without losing goals or tasks', () => {
@@ -34,7 +53,7 @@ describe('runMigrations', () => {
 
     runMigrations(db);
 
-    expect(userVersion(db)).toBe(3);
+    expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
     expect(tableNames(db)).toContain('sessions');
     expect((db.prepare('SELECT title FROM goals').get() as { title: string }).title).toBe(
       'old goal'
