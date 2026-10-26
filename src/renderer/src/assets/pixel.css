@@ -1,0 +1,132 @@
+/* Panel: a bordered box. Four offset shadows draw a border with notched corners. */
+.pixel-panel {
+  position: relative;
+  margin: var(--pixel);
+  padding: 20px;
+  background: var(--color-panel);
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--color-edge),
+    0 var(--pixel) 0 0 var(--color-edge),
+    calc(var(--pixel) * -1) 0 0 0 var(--color-edge),
+    var(--pixel) 0 0 0 var(--color-edge);
+}
+
+.pixel-panel__title {
+  margin-bottom: 16px;
+  color: var(--color-yellow);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+/* Vertical and horizontal spacing helpers for the contents of a panel. */
+.pixel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pixel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Button: the same notched border, plus a darker bottom edge that flattens when pressed. */
+.pixel-button {
+  --button-bg: var(--color-bg-raised);
+  --button-ink: var(--color-ink);
+
+  margin: var(--pixel);
+  padding: 12px 16px;
+  border: 0;
+  color: var(--button-ink);
+  background: var(--button-bg);
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--color-line),
+    0 var(--pixel) 0 0 var(--color-line),
+    calc(var(--pixel) * -1) 0 0 0 var(--color-line),
+    var(--pixel) 0 0 0 var(--color-line),
+    inset 0 calc(var(--pixel) * -1) 0 0 rgb(0 0 0 / 35%);
+}
+
+.pixel-button:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.pixel-button:active:not(:disabled) {
+  transform: translateY(var(--pixel));
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--color-line),
+    0 var(--pixel) 0 0 var(--color-line),
+    calc(var(--pixel) * -1) 0 0 0 var(--color-line),
+    var(--pixel) 0 0 0 var(--color-line);
+}
+
+.pixel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pixel-button--primary {
+  --button-bg: var(--color-cyan);
+  --button-ink: var(--color-line);
+}
+
+.pixel-button--danger {
+  --button-bg: var(--color-red);
+  --button-ink: var(--color-line);
+}
+
+/* Bar: a label, a segmented track and a value, used for HP and XP. */
+.pixel-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pixel-bar__label {
+  width: 48px;
+  color: var(--color-ink-dim);
+}
+
+.pixel-bar__track {
+  flex: 1;
+  height: 24px;
+  padding: var(--pixel);
+  background: var(--color-line);
+}
+
+.pixel-bar__fill {
+  height: 100%;
+  transition: width 300ms steps(8);
+  /* Thin dark lines every 12px give the fill its segmented look. */
+  background-image: linear-gradient(90deg, rgb(0 0 0 / 25%) 2px, transparent 2px);
+  background-size: 12px 100%;
+}
+
+.pixel-bar__fill--hp {
+  background-color: var(--color-green);
+}
+
+.pixel-bar__fill--xp {
+  background-color: var(--color-cyan);
+}
+
+.pixel-bar__value {
+  min-width: 88px;
+  color: var(--color-ink-dim);
+  font-size: 10px;
+  text-align: right;
+}
+
+/* Version list in the footer of the placeholder screen. */
+.versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: var(--color-ink-dim);
+  font-size: 10px;
+}
