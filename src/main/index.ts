@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { openDatabase } from './db/database';
 import { registerIpcHandlers } from './ipc';
+import { PetService } from './pet/petService';
 import { SessionManager } from './session/sessionManager';
 
 function createWindow(): void {
@@ -75,18 +76,30 @@ app.whenReady().then(() => {
   try {
     const db = openDatabase(join(app.getPath('userData'), 'ascend.db'));
 
-    // Every change to the session is pushed to the open windows, which show the countdown.
-    const sessions = new SessionManager(db, Date.now, (state) => {
+    // Pushes a message to every open window.
+    const broadcast = (channel: string, payload: unknown): void => {
       for (const window of BrowserWindow.getAllWindows()) {
         if (!window.isDestroyed()) {
-          window.webContents.send('session:changed', state);
+          window.webContents.send(channel, payload);
         }
       }
-    });
+    };
+
+    // The pet hears about every XP payout, and the windows hear about the pet.
+    const pets = new PetService(db, (update) => broadcast('pet:changed', update));
+
+    // Every change to the session is pushed to the windows, which show the countdown. When a
+    // session ends, it pays its XP to the pet.
+    const sessions = new SessionManager(
+      db,
+      Date.now,
+      (state) => broadcast('session:changed', state),
+      (id, state) => pets.awardSession(id, state)
+    );
 
     // A session left unfinished by a crash or a quit is closed before anything else runs.
     sessions.recover();
-    registerIpcHandlers(db, sessions);
+    registerIpcHandlers(db, sessions, pets);
 
     // The session clock ticks once a second. A failed tick is logged and the next one retries.
     const ticker = setInterval(() => {

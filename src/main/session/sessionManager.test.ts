@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGoal } from '../db/goals';
 import { openDatabase } from '../db/database';
 import { loadActiveSession } from '../db/sessions';
@@ -322,5 +322,97 @@ describe('recover after the app was closed', () => {
     const recovered = newManager().recover();
 
     expect(recovered?.focusedMs).toBe(10 * MIN);
+  });
+});
+
+describe('telling the caller when a session ends', () => {
+  let ended: { id: number; state: SessionState }[];
+
+  beforeEach(() => {
+    ended = [];
+  });
+
+  // A manager that also reports each ended session, like the app does to pay XP.
+  function managerThatReportsEnds(): SessionManager {
+    return new SessionManager(
+      db,
+      () => time,
+      (state) => changes.push(state),
+      (id, state) => ended.push({ id, state })
+    );
+  }
+
+  function savedId(): number {
+    return (db.prepare('SELECT id FROM sessions ORDER BY id DESC LIMIT 1').get() as { id: number })
+      .id;
+  }
+
+  it('reports a completed session once, with its saved id', () => {
+    const manager = managerThatReportsEnds();
+    manager.create(input({ rounds: 1 }));
+    manager.start();
+    expect(ended).toEqual([]);
+
+    time = T0 + 25 * MIN;
+    manager.tick();
+    manager.tick();
+
+    expect(ended).toHaveLength(1);
+    expect(ended[0].id).toBe(savedId());
+    expect(ended[0].state).toMatchObject({ endReason: 'completed', focusedMs: 25 * MIN });
+  });
+
+  it('reports an abandoned session, and nothing while it is running', () => {
+    const manager = managerThatReportsEnds();
+    manager.create(input({ strictness: 'gentle' }));
+    manager.start();
+    time = T0 + 5 * MIN;
+    manager.pause();
+    manager.resume();
+    expect(ended).toEqual([]);
+
+    time = T0 + 10 * MIN;
+    manager.abandon();
+
+    expect(ended).toHaveLength(1);
+    expect(ended[0].state).toMatchObject({ endReason: 'abandoned', focusedMs: 10 * MIN });
+  });
+
+  it('reports a session closed by recovery after a crash', () => {
+    const first = managerThatReportsEnds();
+    first.create(input());
+    first.start();
+    time = T0 + 7 * MIN;
+    first.tick();
+
+    time = T0 + 3 * 60 * MIN;
+    managerThatReportsEnds().recover();
+
+    expect(ended).toHaveLength(1);
+    expect(ended[0].state).toMatchObject({ endReason: 'abandoned', focusedMs: 7 * MIN });
+  });
+
+  it('keeps the session intact even if the caller throws', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const manager = new SessionManager(
+      db,
+      () => time,
+      (state) => changes.push(state),
+      () => {
+        throw new Error('payout failed');
+      }
+    );
+    manager.create(input());
+    manager.start();
+    changes = [];
+
+    time = T0 + 10 * MIN;
+    const state = manager.abandon();
+
+    expect(state.phase).toBe('ended');
+    expect(savedRow()).toMatchObject({ phase: 'ended', end_reason: 'abandoned' });
+    expect(changes).toHaveLength(1);
+    expect(errors).toHaveBeenCalled();
+    errors.mockRestore();
   });
 });

@@ -29,15 +29,20 @@ export class SessionManager {
   private readonly db: DatabaseSync;
   private readonly now: () => number;
   private readonly onChange: (state: SessionState) => void;
+  private readonly onEnded: (id: number, state: SessionState) => void;
 
+  // onChange hears every new state. onEnded hears each session once, when it has ended, with
+  // its saved id, so the caller can pay out XP.
   constructor(
     db: DatabaseSync,
     now: () => number = Date.now,
-    onChange: (state: SessionState) => void = () => {}
+    onChange: (state: SessionState) => void = () => {},
+    onEnded: (id: number, state: SessionState) => void = () => {}
   ) {
     this.db = db;
     this.now = now;
     this.onChange = onChange;
+    this.onEnded = onEnded;
   }
 
   // Runs once at startup. A session left unfinished means the app was closed or crashed, and
@@ -52,6 +57,7 @@ export class SessionManager {
     const final =
       caughtUp.phase === 'ended' ? caughtUp : abandonSession(caughtUp, stored.lastSeenMs);
     saveSession(this.db, stored.id, final, this.now());
+    this.notifyEnded(stored.id, final);
     return final;
   }
 
@@ -152,7 +158,19 @@ export class SessionManager {
     saveSession(this.db, session.id, session.state, now);
     this.lastSavedAt = now;
     this.active = session.state.phase === 'ended' ? null : session;
+    if (session.state.phase === 'ended') {
+      this.notifyEnded(session.id, session.state);
+    }
     this.onChange(session.state);
     return session.state;
+  }
+
+  // A failure while paying out must never break the session itself, which is already saved.
+  private notifyEnded(id: number, state: SessionState): void {
+    try {
+      this.onEnded(id, state);
+    } catch (error) {
+      console.error('Handling the end of a session failed', error);
+    }
   }
 }

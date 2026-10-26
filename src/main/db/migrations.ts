@@ -63,6 +63,29 @@ export const migrations: Migration[] = [
       -- second row that is not 'ended' collides with the first.
       CREATE UNIQUE INDEX idx_sessions_one_active ON sessions ((1)) WHERE phase <> 'ended';
     `
+  },
+  {
+    version: 4,
+    sql: `
+      -- One pet at a time: the id is always 1, so a second pet cannot be inserted.
+      CREATE TABLE pets (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        species TEXT NOT NULL CHECK (species IN ('ember', 'tide', 'leaf')),
+        name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 20),
+        chosen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+
+      -- Every XP payout. The pet's XP is the sum of these rows. A session or a task can pay out
+      -- only once, because (source, ref_id) is unique.
+      CREATE TABLE xp_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL CHECK (source IN ('session', 'task')),
+        ref_id INTEGER NOT NULL,
+        amount INTEGER NOT NULL CHECK (amount > 0),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        UNIQUE (source, ref_id)
+      );
+    `
   }
 ];
 

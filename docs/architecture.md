@@ -34,7 +34,7 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 
 - **Migrations:** versioned SQL in `src/main/db/migrations.ts`, applied in order inside a transaction and tracked with SQLite's `user_version`. A shipped migration is never edited; changes go in a new one.
 - **Validation:** the renderer is untrusted, so the main process validates every input and the tables also carry `CHECK` constraints as a second line of defense.
-- **Tables:** `goals`, `settings`, `todos` and `sessions` exist now; the rest are added by the step that needs them. Planned tables:
+- **Tables:** `goals`, `settings`, `todos`, `sessions`, `pets` and `xp_events` exist now; the rest are added by the step that needs them. Planned tables:
 
 | Table | Purpose |
 |---|---|
@@ -43,7 +43,8 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 | `runs` | One row per run: goal, seed, tier, current stage, status, cause of end |
 | `stages` | Generated stages of a run: type, biome, modifiers, quota, window, result |
 | `sessions` | Focus sessions: goal, active to-do, the engine state as JSON, phase, focused time, end reason, last seen. Stage and distraction counts are added later. |
-| `pets` | Species, evolution branch, run level, mood |
+| `pets` | The chosen pet: species, name, chosen date. One row only; evolution branches and run level come later |
+| `xp_events` | Every XP payout: source (session or task), reference id, amount, date. The pet's XP is the sum |
 | `dex` | Collected species and variants |
 | `whitelists` | Allowed URLs, domains and path prefixes, per goal |
 | `unlocked_achievements` | Achievement id, unlocked date |
@@ -88,6 +89,16 @@ Known limit: the engine counts wall-clock time, so a laptop that sleeps in the m
 On launch the app checks for a session left unfinished. If one exists, it was quit or killed mid-session. The time the app was closed must not count as focus, so the session is ended as abandoned at its last heartbeat, and only the focus time before that counts. This is how the no-quiet-exit rule works without needing to stop the process.
 
 Planned for roadmap step 5: in medium or hard strictness the stage is also marked failed, and in gentle mode the user is offered to resume.
+
+## Pet and XP
+
+The pet rules are pure data and functions in `src/shared/pet.ts`. `PetService` (`src/main/pet/`) owns the pet and pays XP.
+
+- **Starters:** Ember (fire), Tide (water) and Leaf (plant), each with three stages (baby, teen, final). The species and stage names are placeholders. One pet at a time, and the choice is made once.
+- **XP ledger:** every payout is a row in `xp_events`, and the pet's XP is the sum of the rows. `(source, ref_id)` is unique, so a session or a task can pay only once. Un-checking and re-checking a task earns nothing extra. A ledger also makes it easy to count only the XP of one run when run resets arrive in roadmap step 4.
+- **Rules:** 1 XP per whole focused minute, +25 XP for finishing a task, +50 XP for completing a whole session. An abandoned session still pays its focused minutes.
+- **Evolution:** stage 2 at 300 XP and stage 3 at 1200 XP, about 5 and 20 focused hours. Each payout tells the window the new state, the amount gained and whether it just evolved.
+- **When XP is paid:** the session manager tells the service when a session ends, including a session closed by crash recovery. Finishing a task pays through the IPC handler. XP earned before a starter is chosen stays in the ledger and counts once one is chosen.
 
 ## Focus enforcement
 

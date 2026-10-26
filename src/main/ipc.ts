@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { is } from '@electron-toolkit/utils';
 import { createGoal, listGoals } from './db/goals';
 import { createTodo, deleteTodo, listTodos, moveTodo, setTodoDone, updateTodo } from './db/todos';
+import type { PetService } from './pet/petService';
 import type { SessionManager } from './session/sessionManager';
 
 // Only the app's own page may call the main process, never a frame that navigated elsewhere.
@@ -26,7 +27,11 @@ function assertTrusted(event: IpcMainInvokeEvent): void {
 }
 
 // Registers every channel the renderer can call. Add one handler per feature here.
-export function registerIpcHandlers(db: DatabaseSync, sessions: SessionManager): void {
+export function registerIpcHandlers(
+  db: DatabaseSync,
+  sessions: SessionManager,
+  pets: PetService
+): void {
   ipcMain.handle('goals:list', (event) => {
     assertTrusted(event);
     return listGoals(db);
@@ -54,7 +59,12 @@ export function registerIpcHandlers(db: DatabaseSync, sessions: SessionManager):
 
   ipcMain.handle('todos:setDone', (event, input: unknown) => {
     assertTrusted(event);
-    return setTodoDone(db, input);
+    const todo = setTodoDone(db, input);
+    // Finishing a task pays XP once. Checking it off again later pays nothing more.
+    if (todo.done) {
+      pets.awardTask(todo.id);
+    }
+    return todo;
   });
 
   ipcMain.handle('todos:move', (event, input: unknown) => {
@@ -65,6 +75,16 @@ export function registerIpcHandlers(db: DatabaseSync, sessions: SessionManager):
   ipcMain.handle('todos:delete', (event, id: unknown) => {
     assertTrusted(event);
     return deleteTodo(db, id);
+  });
+
+  ipcMain.handle('pet:get', (event) => {
+    assertTrusted(event);
+    return pets.get();
+  });
+
+  ipcMain.handle('pet:choose', (event, input: unknown) => {
+    assertTrusted(event);
+    return pets.choose(input);
   });
 
   ipcMain.handle('session:get', (event) => {

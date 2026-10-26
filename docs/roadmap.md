@@ -9,7 +9,7 @@ Status values: `todo`, `in progress`, `done`.
 | 0 | Planning and documentation | done |
 | 1 | Scaffold, database and dashboard | done |
 | 2 | Pomodoro timer and to-do list | done |
-| 3 | Pet, starters, XP and evolution | todo |
+| 3 | Pet, starters, XP and evolution | in progress |
 | 4 | Stage generator, quotas and roguelike runs | todo |
 | 5 | Enforcement: window detection, lock screen, recovery | todo |
 | 6 | Chrome extension and link whitelist | todo |
@@ -43,9 +43,13 @@ Status values: `todo`, `in progress`, `done`.
 
 ## 3. Pet, starters, XP and evolution
 
-- Starter selection on first launch.
-- XP, evolution thresholds and branching evolution paths.
-- Mood sprites that react to focus and distraction.
+- Starter selection on first launch: Ember, Tide or Leaf, each with a name chosen by the player.
+- XP ledger and rules: 1 XP per focused minute, +25 per finished task, +50 per completed session. Evolution at 300 and 1200 XP (3 stages: baby, teen, final).
+- Code-drawn pixel sprites for every species and stage, with mood variants that react to focus and distraction.
+- Pet panel with an XP bar, and an evolution moment when the pet grows.
+- Branching evolution paths are left for the engagement layer (7b).
+
+Split into two pull requests: the pure rules, database, XP service and IPC first, then the screens and sprites.
 
 **Done when:** a pet gains XP from a session and evolves at a threshold.
 
