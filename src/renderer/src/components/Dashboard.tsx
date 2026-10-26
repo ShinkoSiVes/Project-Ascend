@@ -6,8 +6,12 @@ import PixelPanel from './PixelPanel';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
+interface DashboardProps {
+  onStartSession: (goal: Goal) => void;
+}
+
 // The home screen: create a quest (goal) and see the ones you already saved.
-function Dashboard(): React.JSX.Element {
+function Dashboard({ onStartSession }: DashboardProps): React.JSX.Element {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [status, setStatus] = useState<LoadStatus>('loading');
 
@@ -62,7 +66,7 @@ function Dashboard(): React.JSX.Element {
         {status === 'ready' && goals.length > 0 && (
           <ul className="quest-list">
             {goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
+              <GoalCard key={goal.id} goal={goal} onStartSession={onStartSession} />
             ))}
           </ul>
         )}

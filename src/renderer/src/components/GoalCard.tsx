@@ -7,10 +7,11 @@ import TodoList from './TodoList';
 
 interface GoalCardProps {
   goal: Goal;
+  onStartSession: (goal: Goal) => void;
 }
 
 // One saved goal, shown as a quest card with its task list one click away.
-function GoalCard({ goal }: GoalCardProps): React.JSX.Element {
+function GoalCard({ goal, onStartSession }: GoalCardProps): React.JSX.Element {
   const [showTasks, setShowTasks] = useState(false);
   const created = new Date(goal.createdAt).toLocaleDateString();
   const tasksId = `tasks-${goal.id}`;
@@ -35,7 +36,15 @@ function GoalCard({ goal }: GoalCardProps): React.JSX.Element {
       </div>
       <p className="quest-card__date">Created {created}</p>
 
-      <div>
+      <div className="pixel-row">
+        <PixelButton
+          variant="primary"
+          size="small"
+          aria-label={`Start a session for ${goal.title}`}
+          onClick={() => onStartSession(goal)}
+        >
+          Start session
+        </PixelButton>
         <PixelButton
           size="small"
           aria-expanded={showTasks}

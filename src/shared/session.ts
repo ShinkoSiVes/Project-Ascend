@@ -12,7 +12,7 @@ export const SESSION_LIMITS = {
   focusMinutes: { min: 1, max: 180, label: 'Focus length' },
   breakMinutes: { min: 1, max: 60, label: 'Break length' },
   longBreakMinutes: { min: 1, max: 120, label: 'Long break length' },
-  longBreakEvery: { min: 2, max: 12, label: 'Long break interval' },
+  longBreakEvery: { min: 2, max: 12, label: 'Rounds per long break' },
   rounds: { min: 1, max: 12, label: 'Rounds' }
 } as const;
 
