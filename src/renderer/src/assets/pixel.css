@@ -1,14 +1,15 @@
-/* Panel: a bordered box. Four offset shadows draw a border with notched corners. */
+/* Panel: a bordered box. Four offset shadows draw a border with notched corners.
+   Set --border-color on an element to change its border. */
 .pixel-panel {
   position: relative;
   margin: var(--pixel);
   padding: 20px;
   background: var(--color-panel);
   box-shadow:
-    0 calc(var(--pixel) * -1) 0 0 var(--color-edge),
-    0 var(--pixel) 0 0 var(--color-edge),
-    calc(var(--pixel) * -1) 0 0 0 var(--color-edge),
-    var(--pixel) 0 0 0 var(--color-edge);
+    0 calc(var(--pixel) * -1) 0 0 var(--border-color, var(--color-edge)),
+    0 var(--pixel) 0 0 var(--border-color, var(--color-edge)),
+    calc(var(--pixel) * -1) 0 0 0 var(--border-color, var(--color-edge)),
+    var(--pixel) 0 0 0 var(--border-color, var(--color-edge));
 }
 
 .pixel-panel__title {
@@ -120,6 +121,251 @@
   color: var(--color-ink-dim);
   font-size: 10px;
   text-align: right;
+}
+
+/* Hides something visually but keeps it for screen readers (used for the real radio inputs). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Form fields */
+.pixel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pixel-fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pixel-label {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.pixel-field .pixel-label {
+  margin-bottom: 0;
+}
+
+.pixel-input {
+  --border-color: var(--color-edge);
+
+  width: calc(100% - var(--pixel) * 2);
+  margin: var(--pixel);
+  padding: 12px;
+  border: 0;
+  color: var(--color-ink);
+  background: var(--color-line);
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--border-color),
+    0 var(--pixel) 0 0 var(--border-color),
+    calc(var(--pixel) * -1) 0 0 0 var(--border-color),
+    var(--pixel) 0 0 0 var(--border-color);
+}
+
+.pixel-input[aria-invalid='true'] {
+  --border-color: var(--color-red);
+}
+
+.pixel-input::placeholder {
+  color: var(--color-ink-dim);
+  opacity: 0.6;
+}
+
+.pixel-error {
+  color: var(--color-red);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.pixel-note {
+  color: var(--color-ink-dim);
+}
+
+/* Star rating: real radio inputs, drawn as pixel stars. */
+.star-rating {
+  display: flex;
+  gap: 8px;
+}
+
+.star-rating__option {
+  cursor: pointer;
+  line-height: 0;
+}
+
+.star-rating__option:has(input:focus-visible) {
+  outline: var(--pixel) solid var(--color-yellow);
+  outline-offset: var(--pixel);
+}
+
+.pixel-star {
+  width: 28px;
+  height: 28px;
+  fill: var(--color-edge);
+}
+
+.pixel-star--filled {
+  fill: var(--color-yellow);
+}
+
+.star-rating__option:hover .pixel-star {
+  filter: brightness(1.3);
+}
+
+/* Choice cards: real radio inputs, drawn as selectable boxes. */
+.pixel-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.pixel-choice {
+  display: block;
+  cursor: pointer;
+}
+
+.pixel-choice__body {
+  --border-color: var(--color-line);
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(100% - var(--pixel) * 2);
+  margin: var(--pixel);
+  padding: 12px;
+  background: var(--color-bg-raised);
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--border-color),
+    0 var(--pixel) 0 0 var(--border-color),
+    calc(var(--pixel) * -1) 0 0 0 var(--border-color),
+    var(--pixel) 0 0 0 var(--border-color);
+}
+
+.pixel-choice__body--gentle {
+  --choice-accent: var(--color-green);
+}
+
+.pixel-choice__body--medium {
+  --choice-accent: var(--color-yellow);
+}
+
+.pixel-choice__body--hard {
+  --choice-accent: var(--color-red);
+}
+
+.pixel-choice:hover .pixel-choice__body {
+  filter: brightness(1.2);
+}
+
+.pixel-choice input:checked + .pixel-choice__body {
+  --border-color: var(--choice-accent);
+
+  background: var(--color-panel);
+}
+
+.pixel-choice input:checked + .pixel-choice__body .pixel-choice__name {
+  color: var(--choice-accent);
+}
+
+.pixel-choice:has(input:focus-visible) .pixel-choice__body {
+  outline: var(--pixel) solid var(--color-yellow);
+  outline-offset: var(--pixel);
+}
+
+.pixel-choice__name {
+  font-size: 12px;
+}
+
+.pixel-choice__summary {
+  color: var(--color-ink-dim);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+/* Strictness badge on a quest card. */
+.pixel-badge {
+  padding: 4px 8px;
+  color: var(--color-line);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.pixel-badge--gentle {
+  background: var(--color-green);
+}
+
+.pixel-badge--medium {
+  background: var(--color-yellow);
+}
+
+.pixel-badge--hard {
+  background: var(--color-red);
+}
+
+/* Quest cards: a panel with a darker border, one per saved goal. */
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0;
+}
+
+.quest-card {
+  --border-color: var(--color-line);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--color-bg-raised);
+}
+
+.quest-card__title {
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.quest-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.quest-card__stars {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.quest-card__stars .pixel-star {
+  width: 16px;
+  height: 16px;
+}
+
+.quest-card__date {
+  color: var(--color-ink-dim);
+  font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .pixel-choices {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Version list in the footer of the placeholder screen. */
