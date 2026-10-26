@@ -1,3 +1,4 @@
+import { sessionXp } from '../../../shared/pet';
 import type { SessionState } from '../../../shared/session';
 import { useSessionLabels } from '../hooks/useSessionLabels';
 import { formatFocused } from '../lib/format';
@@ -22,6 +23,7 @@ function ResultScreen({ session, onDone }: ResultScreenProps): React.JSX.Element
           <li>Quest: {goalTitle ?? '...'}</li>
           {session.todoId !== null && <li>Task: {todoTitle ?? '...'}</li>}
           <li>Focused: {formatFocused(session.focusedMs)}</li>
+          <li>XP earned: +{sessionXp(session.focusedMs, completed)}</li>
           <li>
             Rounds reached: {session.round} of {session.config.rounds}
           </li>

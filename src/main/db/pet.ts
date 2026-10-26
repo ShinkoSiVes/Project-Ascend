@@ -70,8 +70,17 @@ export function totalXp(db: DatabaseSync): number {
   return row.total;
 }
 
+// When a focus session last paid XP, or null if none has. Finishing a task does not count,
+// because the pet's mood follows time spent focusing.
+export function lastFocusedAt(db: DatabaseSync): string | null {
+  const row = db
+    .prepare("SELECT MAX(created_at) AS last FROM xp_events WHERE source = 'session'")
+    .get() as { last: string | null };
+  return row.last;
+}
+
 // The chosen pet with its progress, or null before a starter has been picked.
 export function getPetState(db: DatabaseSync): PetState | null {
   const record = getPetRecord(db);
-  return record ? petStateFrom(record, totalXp(db)) : null;
+  return record ? petStateFrom(record, totalXp(db), lastFocusedAt(db)) : null;
 }

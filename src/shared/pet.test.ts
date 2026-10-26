@@ -6,6 +6,7 @@ import {
   SPECIES,
   SPECIES_IDS,
   checkPetChoice,
+  moodFor,
   petStateFrom,
   sessionXp,
   stageForXp,
@@ -119,6 +120,63 @@ describe('petStateFrom', () => {
   it('treats negative or fractional XP safely', () => {
     expect(petStateFrom(record, -5).xp).toBe(0);
     expect(petStateFrom(record, 12.9).xp).toBe(12);
+  });
+});
+
+describe('petStateFrom and the last focus', () => {
+  it('defaults to never having focused', () => {
+    expect(petStateFrom(record, 0).lastFocusedAt).toBeNull();
+  });
+
+  it('keeps the time of the last focus', () => {
+    expect(petStateFrom(record, 10, '2026-10-27T10:00:00.000Z').lastFocusedAt).toBe(
+      '2026-10-27T10:00:00.000Z'
+    );
+  });
+});
+
+describe('moodFor', () => {
+  const HOUR = 3_600_000;
+  const focused = Date.parse('2026-10-27T12:00:00.000Z');
+  const state = { chosenAt: '2026-10-01T00:00:00.000Z', lastFocusedAt: '2026-10-27T12:00:00.000Z' };
+
+  it.each([
+    [0, 'happy'],
+    [1 * HOUR, 'happy'],
+    [23.99 * HOUR, 'happy'],
+    [24 * HOUR, 'neutral'],
+    [47.99 * HOUR, 'neutral'],
+    [48 * HOUR, 'sad'],
+    [30 * 24 * HOUR, 'sad']
+  ])('is %i ms after the last focus: %s', (away, mood) => {
+    expect(moodFor(state, focused + away)).toBe(mood);
+  });
+
+  it('is happy again as soon as the pet focuses', () => {
+    const sad = moodFor(state, focused + 5 * 24 * HOUR);
+    const cheered = moodFor(
+      { ...state, lastFocusedAt: new Date(focused + 5 * 24 * HOUR).toISOString() },
+      focused + 5 * 24 * HOUR + HOUR
+    );
+
+    expect(sad).toBe('sad');
+    expect(cheered).toBe('happy');
+  });
+
+  it('counts a new pet that has not focused yet from the day it was chosen', () => {
+    const fresh = { chosenAt: '2026-10-27T12:00:00.000Z', lastFocusedAt: null };
+
+    expect(moodFor(fresh, focused + HOUR)).toBe('happy');
+    expect(moodFor(fresh, focused + 30 * HOUR)).toBe('neutral');
+    expect(moodFor(fresh, focused + 3 * 24 * HOUR)).toBe('sad');
+  });
+
+  it('is neutral when the date cannot be read', () => {
+    expect(moodFor({ chosenAt: 'not a date', lastFocusedAt: null }, focused)).toBe('neutral');
+  });
+
+  it('treats a last focus in the future, from a clock that moved back, as happy', () => {
+    expect(moodFor(state, focused - 3 * HOUR)).toBe('happy');
   });
 });
 

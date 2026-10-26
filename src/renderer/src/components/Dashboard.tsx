@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import type { Goal } from '../../../shared/goal';
+import type { PetState } from '../../../shared/pet';
+import type { XpGain } from '../hooks/usePet';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
+import PetPanel from './PetPanel';
 import PixelPanel from './PixelPanel';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
 interface DashboardProps {
+  pet: PetState;
+  gain: XpGain | null;
   onStartSession: (goal: Goal) => void;
 }
 
-// The home screen: create a quest (goal) and see the ones you already saved.
-function Dashboard({ onStartSession }: DashboardProps): React.JSX.Element {
+// The home screen: your pet, a form to create a quest (goal), and the quests already saved.
+function Dashboard({ pet, gain, onStartSession }: DashboardProps): React.JSX.Element {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [status, setStatus] = useState<LoadStatus>('loading');
 
@@ -48,6 +53,8 @@ function Dashboard({ onStartSession }: DashboardProps): React.JSX.Element {
       <PixelPanel title="Project: Ascend">
         <p>Pick a quest, then lock in.</p>
       </PixelPanel>
+
+      <PetPanel pet={pet} gain={gain} />
 
       <PixelPanel title="New quest">
         <GoalForm onCreated={handleCreated} />

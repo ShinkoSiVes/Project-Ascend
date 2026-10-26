@@ -9,7 +9,7 @@ import {
   type XpSource
 } from '../../shared/pet';
 import type { SessionState } from '../../shared/session';
-import { addXp, choosePet, getPetRecord, getPetState, totalXp } from '../db/pet';
+import { addXp, choosePet, getPetRecord, getPetState, lastFocusedAt, totalXp } from '../db/pet';
 
 // Owns the pet: choosing the starter and paying out XP. Every payout is a row in a ledger that
 // allows each session and each task to pay only once, so nothing can be earned twice.
@@ -57,7 +57,7 @@ export class PetService {
     if (record) {
       const after = before + amount;
       this.onChange({
-        pet: petStateFrom(record, after),
+        pet: petStateFrom(record, after, lastFocusedAt(this.db)),
         gained: amount,
         evolved: stageForXp(after) > stageForXp(before)
       });

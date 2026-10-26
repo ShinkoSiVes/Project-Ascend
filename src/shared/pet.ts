@@ -64,6 +64,8 @@ export interface PetState extends PetRecord {
   // XP earned inside the current stage, and how much the stage needs. null at the final stage.
   xpIntoStage: number;
   xpForStage: number | null;
+  // When a focus session last paid XP, or null if none has yet. The pet's mood follows it.
+  lastFocusedAt: string | null;
 }
 
 // What the main process tells the window after XP is earned.
@@ -112,28 +114,44 @@ export function stageName(species: SpeciesId, stage: number): string {
 }
 
 // Adds the progress information to a chosen pet and its total XP.
-export function petStateFrom(record: PetRecord, xp: number): PetState {
+export function petStateFrom(
+  record: PetRecord,
+  xp: number,
+  lastFocusedAt: string | null = null
+): PetState {
   const total = Math.max(0, Math.floor(xp));
   const stage = stageForXp(total);
-
-  if (stage >= FINAL_STAGE) {
-    return {
-      ...record,
-      stage,
-      xp: total,
-      xpIntoStage: total - EVOLUTION_XP[stage - 1],
-      xpForStage: null
-    };
-  }
-
   const stageStart = EVOLUTION_XP[stage - 1];
+
   return {
     ...record,
     stage,
     xp: total,
     xpIntoStage: total - stageStart,
-    xpForStage: EVOLUTION_XP[stage] - stageStart
+    // The final stage has no next stage to grow towards.
+    xpForStage: stage >= FINAL_STAGE ? null : EVOLUTION_XP[stage] - stageStart,
+    lastFocusedAt
   };
+}
+
+export type PetMood = 'happy' | 'neutral' | 'sad';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The pet is happy within a day of the last focus, neutral for the second day, and sad after
+// two days away. A new pet counts from the day it was chosen, so it never starts out sad.
+// It is only a face: nothing is lost, and one focus session cheers it up again.
+export function moodFor(state: Pick<PetState, 'lastFocusedAt' | 'chosenAt'>, now: number): PetMood {
+  const reference = Date.parse(state.lastFocusedAt ?? state.chosenAt);
+  if (Number.isNaN(reference)) {
+    return 'neutral';
+  }
+
+  const away = now - reference;
+  if (away < DAY_MS) {
+    return 'happy';
+  }
+  return away < 2 * DAY_MS ? 'neutral' : 'sad';
 }
 
 // The XP a finished session pays: one per whole focused minute, plus a bonus for completing it.
