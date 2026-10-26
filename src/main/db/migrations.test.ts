@@ -20,7 +20,32 @@ describe('runMigrations', () => {
     runMigrations(db);
 
     expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
-    expect(tableNames(db)).toEqual(['goals', 'pets', 'sessions', 'settings', 'todos', 'xp_events']);
+    expect(tableNames(db)).toEqual([
+      'goals',
+      'pets',
+      'runs',
+      'sessions',
+      'settings',
+      'todos',
+      'xp_events'
+    ]);
+  });
+
+  it('upgrades a version 4 database without losing the pet and its XP', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations.slice(0, 4));
+    db.prepare("INSERT INTO pets (id, species, name) VALUES (1, 'leaf', 'Fern')").run();
+    db.prepare("INSERT INTO xp_events (source, ref_id, amount) VALUES ('task', 1, 25)").run();
+    expect(userVersion(db)).toBe(4);
+
+    runMigrations(db);
+
+    expect(userVersion(db)).toBe(5);
+    expect(tableNames(db)).toContain('runs');
+    expect((db.prepare('SELECT name FROM pets').get() as { name: string }).name).toBe('Fern');
+    expect((db.prepare('SELECT SUM(amount) AS n FROM xp_events').get() as { n: number }).n).toBe(
+      25
+    );
   });
 
   it('upgrades a version 3 database without losing goals or sessions', () => {
@@ -36,7 +61,7 @@ describe('runMigrations', () => {
 
     runMigrations(db);
 
-    expect(userVersion(db)).toBe(4);
+    expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
     expect(tableNames(db)).toEqual(expect.arrayContaining(['pets', 'xp_events']));
     expect((db.prepare('SELECT COUNT(*) AS n FROM goals').get() as { n: number }).n).toBe(1);
     expect((db.prepare('SELECT COUNT(*) AS n FROM sessions').get() as { n: number }).n).toBe(1);

@@ -16,6 +16,7 @@ Status values: `todo`, `in progress`, `done`.
 | 7 | Spotify | todo |
 | 7b | Engagement and replay layer | todo |
 | 8 | Sound, animation and polish | todo |
+| 9 | Dashboard overhaul | todo |
 
 ## 0. Planning and documentation
 
@@ -109,6 +110,18 @@ Split into three pull requests: the pure generator and run rules, then saving ru
 - Accessibility and settings pass.
 
 **Done when:** the app feels finished end to end and the manual checks in the architecture doc pass.
+
+## 9. Dashboard overhaul
+
+Done last, once every other step is implemented.
+
+- Only **focus mode** (the timer screen while a session runs) keeps the 8-bit pixel look.
+- The dashboard and the selection screens (starter picker, session prep, stage map, perk draft and results) get a high-end modern design, with animation and interactive, animated elements.
+- The design direction (mood, palette, how playful) is decided with the player before any design work starts.
+- The overview's description of the look and feel is updated in the same pull request.
+- Behavior, data and tests stay as they are; this step changes presentation only.
+
+**Done when:** the dashboard and selection screens use the new design, focus mode still looks 8-bit, and everything stays keyboard accessible and respects reduced motion.
 
 ## Working rules
 

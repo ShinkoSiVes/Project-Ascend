@@ -24,14 +24,14 @@ Project: Ascend is a local focus app. You set a goal, enter focus mode, and a ga
 
 ## Roguelike runs
 
-- A quest can be played as a **run**: a path of randomly generated stages. A seed makes each run reproducible. Only one run is active at a time.
+- A quest can be played as a **run**: a path of randomly generated stages. A seed makes each run reproducible. Only one run is active at a time, and you end the current one before starting another.
 - **A stage is one calendar day.** Its **quota** is an amount of focused time to reach that day, counting only sessions for the run's quest. Stage *k* takes place on the *k*th day of the run, and the day ends at local midnight. Clearing a stage early does not skip ahead: extra focus that day only earns XP, and tomorrow is the next stage.
 - **Quota size** depends on the quest's difficulty stars: 20, 30, 45, 60 or 90 minutes a day at the start, growing up to 50% by the last stage. Every 5th stage and the last one is a **boss** day with a 50% bigger quota. A **rest** day with half the quota may appear now and then. It never comes first or on a boss day, and never within 6 stages of another rest day. Every quota is a multiple of 5 minutes. The number of stages follows the quest's target hours, between 3 and 30.
 - A difficulty slider scales how fast difficulty ramps up and how often modifiers appear.
 - **Missing a quota** ends the run, unless a Shield forgives it. A run also fails when HP reaches 0 from distractions (planned for roadmap step 5). If the app is not opened for several days, each missed day is settled in order the next time it runs.
 - **Failing a run restarts it at stage 1 with a new seed and a new stage map. The pet keeps its XP and evolution.** What a failed run loses is the run itself: its stage progress, perks and map.
 - **What persists after a reset:** the pet, best stage reached, total focus hours, run history, unlocks and achievements, and your quests and to-do lists.
-- **Perks** are offered 3 at a time after each cleared stage, and an offer that is not picked expires at midnight. The first four are **Shield** (forgives one missed quota), **XP boost** (+25% XP from focus sessions for the rest of the run, stacking), **Lighter quota** (tomorrow's quota is 30% smaller) and **Reroll** (a token to redraw the offers at a later draft).
+- **Perks** are offered 3 at a time after each cleared stage, and an offer that is not picked expires at midnight. The first four are **Shield** (forgives one missed quota), **XP boost** (+25% XP from sessions for the run's quest, for the rest of the run, stacking), **Lighter quota** (tomorrow's quota is 30% smaller) and **Reroll** (a token to redraw the offers at a later draft).
 
 ## Pets and evolution
 

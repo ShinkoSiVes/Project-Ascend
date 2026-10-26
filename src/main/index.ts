@@ -4,8 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { openDatabase } from './db/database';
 import { registerIpcHandlers } from './ipc';
-import { PetService } from './pet/petService';
-import { SessionManager } from './session/sessionManager';
+import { createServices, recoverServices } from './services';
 
 function createWindow(): void {
   // Create the browser window.
@@ -85,28 +84,24 @@ app.whenReady().then(() => {
       }
     };
 
-    // The pet hears about every XP payout, and the windows hear about the pet.
-    const pets = new PetService(db, (update) => broadcast('pet:changed', update));
+    // The session, the pet and the run, connected: a finished session pays the pet and counts
+    // toward the run, and the windows hear about every change.
+    const services = createServices(db, { broadcast });
+    const { sessions, runs } = services;
 
-    // Every change to the session is pushed to the windows, which show the countdown. When a
-    // session ends, it pays its XP to the pet.
-    const sessions = new SessionManager(
-      db,
-      Date.now,
-      (state) => broadcast('session:changed', state),
-      (id, state) => pets.awardSession(id, state)
-    );
+    // A session left unfinished by a crash or a quit is closed, and days that passed while the app
+    // was closed are settled, before anything else runs.
+    recoverServices(services);
+    registerIpcHandlers(db, services);
 
-    // A session left unfinished by a crash or a quit is closed before anything else runs.
-    sessions.recover();
-    registerIpcHandlers(db, sessions, pets);
-
-    // The session clock ticks once a second. A failed tick is logged and the next one retries.
+    // The clock ticks once a second: the session countdown, and the run's midnight rollover. A
+    // failed tick is logged and the next one retries.
     const ticker = setInterval(() => {
       try {
         sessions.tick();
+        runs.tick();
       } catch (error) {
-        console.error('Session tick failed', error);
+        console.error('Tick failed', error);
       }
     }, 1000);
 
