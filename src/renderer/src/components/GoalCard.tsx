@@ -7,11 +7,19 @@ import TodoList from './TodoList';
 
 interface GoalCardProps {
   goal: Goal;
+  // The quest the active run is for, or null when there is no active run.
+  runGoalId: number | null;
   onStartSession: (goal: Goal) => void;
+  onStartRun: (goal: Goal) => void;
 }
 
 // One saved goal, shown as a quest card with its task list one click away.
-function GoalCard({ goal, onStartSession }: GoalCardProps): React.JSX.Element {
+function GoalCard({
+  goal,
+  runGoalId,
+  onStartSession,
+  onStartRun
+}: GoalCardProps): React.JSX.Element {
   const [showTasks, setShowTasks] = useState(false);
   const created = new Date(goal.createdAt).toLocaleDateString();
   const tasksId = `tasks-${goal.id}`;
@@ -33,6 +41,7 @@ function GoalCard({ goal, onStartSession }: GoalCardProps): React.JSX.Element {
         <span className={`pixel-badge pixel-badge--${goal.strictness}`}>
           {STRICTNESS_INFO[goal.strictness].label}
         </span>
+        {runGoalId === goal.id && <span className="pixel-badge pixel-badge--run">Run active</span>}
       </div>
       <p className="quest-card__date">Created {created}</p>
 
@@ -45,6 +54,17 @@ function GoalCard({ goal, onStartSession }: GoalCardProps): React.JSX.Element {
         >
           Start session
         </PixelButton>
+        {/* Only one run can be active, so the button is gone while one is. */}
+        {runGoalId === null && (
+          <PixelButton
+            size="small"
+            aria-label={`Start a run for ${goal.title}`}
+            title="Plan one stage a day, each with a focus quota"
+            onClick={() => onStartRun(goal)}
+          >
+            Start run
+          </PixelButton>
+        )}
         <PixelButton
           size="small"
           aria-expanded={showTasks}
