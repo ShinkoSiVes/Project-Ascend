@@ -109,20 +109,24 @@ The whitelist is built in the prep phase and enforced by the Chrome extension.
 
 ## Security and privacy
 
-- Electron hardening: `contextIsolation` on, `nodeIntegration` off, a strict content security policy, no remote content in the renderer, and navigation locked to the app.
+- Electron hardening: renderer `sandbox` and `contextIsolation` on, `nodeIntegration` off, a strict content security policy, no remote content in the renderer, navigation locked to the app, external links opened only over `https:`, and all permission requests denied until a feature needs one.
+- The preload script exposes only a small typed `window.api`, never Electron's IPC objects directly.
 - The bridge only listens on `127.0.0.1` and requires the pairing token.
 - Secrets (the Spotify refresh token) are encrypted with `safeStorage`. API keys, tokens and `.env` files are never committed.
 - All data stays on the machine. The app collects no analytics and sends nothing except Spotify requests.
 - Art, names and sounds are original. No assets are copied from other games.
 
-## Project layout (planned)
+## Project layout
+
+The app is TypeScript, built with electron-vite. Folders marked (planned) do not exist yet.
 
 ```
-main/         Electron main process: session, run engine, watcher, bridge, db, spotify
-renderer/     React UI: dashboard, prep, session, stage map, pet, trophies
-extension/    Chrome extension: manifest.json, background script, blocked page
-content/      JSON data: species, perks, modifiers, achievements, events
-docs/         Documentation
+src/main/        Electron main process: session, run engine, watcher, bridge, db, spotify
+src/preload/     Preload script: the typed window.api exposed to the renderer
+src/renderer/    React UI: dashboard, prep, session, stage map, pet, trophies
+extension/       (planned) Chrome extension: manifest.json, background script, blocked page
+content/         (planned) JSON data: species, perks, modifiers, achievements, events
+docs/            Documentation
 ```
 
 ## Testing
