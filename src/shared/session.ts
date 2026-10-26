@@ -66,6 +66,11 @@ export interface SessionState {
   // When the current pause began, or null if the session is not paused.
   pausedAt: number | null;
   pausesUsed: number;
+  // When the person stopped touching the keyboard and mouse, if they are away right now. The clock
+  // is stopped from that moment, like a pause, but it does not use up one of the allowed pauses.
+  awaySince: number | null;
+  // Time spent away in this session, not counting the current stretch.
+  awayMs: number;
   // Focus time from finished rounds. Use focusedMsSoFar() to include the running round.
   focusedMs: number;
   startedAt: number | null;
@@ -152,6 +157,22 @@ export function focusedMsSoFar(state: SessionState, now: number): number {
 export function isPaused(state: SessionState): boolean {
   return state.pausedAt !== null;
 }
+
+// Whether the clock is stopped because nobody has touched the keyboard or mouse for a while.
+export function isAway(state: SessionState): boolean {
+  return state.awaySince !== null;
+}
+
+// Total time away so far, including the stretch that is still going on.
+export function awayMsSoFar(state: SessionState, now: number): number {
+  const current = state.awaySince === null ? 0 : Math.max(0, now - state.awaySince);
+  return state.awayMs + current;
+}
+
+// After this many seconds without input, the person counts as away and the focus clock stops.
+export const AWAY_AFTER_SECONDS = 300;
+export const MIN_AWAY_AFTER_SECONDS = 30;
+export const MAX_AWAY_AFTER_SECONDS = 1800;
 
 // How many more pauses are allowed, or null for no limit.
 export function pausesLeft(state: SessionState): number | null {

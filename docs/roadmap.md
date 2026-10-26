@@ -69,13 +69,21 @@ Split into three pull requests: the pure generator and run rules, then saving ru
 
 ## 5. Enforcement: window detection, lock screen, recovery
 
-- Active-window watcher with allowed and blocked app lists.
-- Idle and away detection that pauses the quota clock.
-- Always-on-top focus lock screen.
-- Strictness behavior for gentle, medium and hard.
-- Session recovery: quitting mid-session on medium or hard counts as a failed stage.
+Split into three pull requests.
 
-**Done when:** opening a blocked app triggers the right response at each strictness, and killing the app mid-session fails the stage on next launch.
+**5a. Away detection** (done first)
+- After 5 minutes without keyboard or mouse input, the focus clock stops as of the last input, without using a pause, and starts again on input. The time away is shown on the timer.
+
+**5b. Distractions and HP**
+- A blocklist of apps with editable presets (games, chat, social), and a watcher that notices when one is in front. Only app names and counts are kept, never window titles.
+- 100 HP per run: a distraction costs 10 HP after a 10 second grace, clearing a stage heals 10, and 0 HP ends the run. Gentle gets one revive per run.
+
+**5c. Lock screen and strictness actions**
+- Always-on-top focus lock screen.
+- Gentle warns, medium brings the timer back and blocks (an override costs a token), hard sends a polite close request to blocked apps, never a force-kill, with no override.
+- Session recovery: quitting mid-session on medium or hard counts against the run.
+
+**Done when:** being away stops the clock, opening a blocked app triggers the right response at each strictness, and killing the app mid-session has the right effect on the next launch.
 
 ## 6. Chrome extension and link whitelist
 

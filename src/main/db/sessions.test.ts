@@ -129,6 +129,59 @@ describe('damaged rows', () => {
   });
 });
 
+describe('sessions saved before the away fields existed', () => {
+  function insertWithout(...fields: string[]): number {
+    const state = startSession(newState(), T0) as unknown as Record<string, unknown>;
+    for (const field of fields) {
+      delete state[field];
+    }
+    const row = db
+      .prepare(
+        "INSERT INTO sessions (goal_id, state, phase, last_seen_ms) VALUES (?, ?, 'focus', ?) RETURNING id"
+      )
+      .get(goalId, JSON.stringify(state), T0 + 5) as { id: number };
+    return row.id;
+  }
+
+  it('loads with the plain defaults instead of being closed as damaged', () => {
+    const id = insertWithout('awaySince', 'awayMs');
+
+    const stored = loadActiveSession(db);
+
+    expect(stored?.id).toBe(id);
+    expect(stored?.state).toMatchObject({ awaySince: null, awayMs: 0, phase: 'focus' });
+    expect(db.prepare('SELECT phase FROM sessions WHERE id = ?').get(id)).toEqual({
+      phase: 'focus'
+    });
+  });
+
+  it('keeps the away fields when they are there', () => {
+    const state = {
+      ...startSession(newState(), T0),
+      awaySince: T0 + 60_000,
+      awayMs: 90_000,
+      segmentStartedAt: null
+    };
+    const id = insertSession(db, state, T0);
+
+    expect(loadActiveSession(db)).toEqual({ id, state, lastSeenMs: T0 });
+  });
+
+  it.each([
+    ['awaySince as text', { awaySince: 'soon' }],
+    ['awayMs as text', { awayMs: 'a while' }],
+    ['a NaN awayMs', { awayMs: NaN }]
+  ])('still closes a session with %s', (_name, overrides) => {
+    const state = { ...startSession(newState(), T0), ...overrides };
+    db.prepare(
+      "INSERT INTO sessions (goal_id, state, phase, last_seen_ms) VALUES (?, ?, 'focus', 1)"
+    ).run(goalId, JSON.stringify(state));
+
+    expect(loadActiveSession(db)).toBeNull();
+    expect(() => insertSession(db, newState(), T0)).not.toThrow();
+  });
+});
+
 describe('relations', () => {
   it('is removed together with its goal', () => {
     insertSession(db, newState(), T0);

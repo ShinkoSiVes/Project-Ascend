@@ -18,6 +18,15 @@ function parseJson(text: string): unknown {
   }
 }
 
+// A session saved before the away state existed has no away fields. It is given the plain
+// defaults, so an update does not close a session that was in the middle of running.
+function withAwayFields(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value;
+  }
+  return { awaySince: null, awayMs: 0, ...value };
+}
+
 function isNumberOrNull(value: unknown): boolean {
   return value === null || (typeof value === 'number' && Number.isFinite(value));
 }
@@ -37,10 +46,14 @@ function isSessionState(value: unknown): value is SessionState {
     config !== null &&
     Object.keys(checkSessionConfig(config as Record<string, unknown>)).length === 0 &&
     (PHASES as readonly string[]).includes(state.phase as string) &&
-    [state.round, state.elapsedBeforeSegment, state.pausesUsed, state.focusedMs].every(
-      (field) => typeof field === 'number' && Number.isFinite(field)
-    ) &&
-    [state.segmentStartedAt, state.pausedAt, state.startedAt, state.endedAt].every(
+    [
+      state.round,
+      state.elapsedBeforeSegment,
+      state.pausesUsed,
+      state.awayMs,
+      state.focusedMs
+    ].every((field) => typeof field === 'number' && Number.isFinite(field)) &&
+    [state.segmentStartedAt, state.pausedAt, state.awaySince, state.startedAt, state.endedAt].every(
       isNumberOrNull
     ) &&
     (state.endReason === null || state.endReason === 'completed' || state.endReason === 'abandoned')
@@ -90,7 +103,7 @@ export function loadActiveSession(db: DatabaseSync): StoredSession | null {
     return null;
   }
 
-  const parsed = parseJson(row.state);
+  const parsed = withAwayFields(parseJson(row.state));
   if (!isSessionState(parsed)) {
     // A damaged row would block every new session through the one-active-session index,
     // so it is closed instead of being left in the way.

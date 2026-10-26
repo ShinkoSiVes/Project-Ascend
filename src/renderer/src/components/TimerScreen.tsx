@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import {
+  awayMsSoFar,
   elapsedMs,
   focusedMsSoFar,
+  isAway,
   isPaused,
   pausesLeft,
   phaseDurationMs,
@@ -84,21 +86,21 @@ function TimerScreen({ session }: TimerScreenProps): React.JSX.Element {
   }
 
   const paused = isPaused(view);
+  const away = isAway(view);
   const onBreak = view.phase === 'break';
   const duration = phaseDurationMs(view);
   const elapsed = Math.min(elapsedMs(view, now), duration);
   const left = pausesLeft(view);
-  const canPause = view.phase === 'focus' && !paused && left !== 0;
+  const canPause = view.phase === 'focus' && !paused && !away && left !== 0;
   const percent = duration > 0 ? Math.floor((elapsed / duration) * 100) : 0;
-  const phaseLabel = paused ? 'Paused' : onBreak ? 'Break' : 'Focus';
+  const phaseLabel = paused ? 'Paused' : away ? 'Away' : onBreak ? 'Break' : 'Focus';
+  const phaseClass = paused || away ? 'paused' : view.phase;
 
   return (
     <div className="timer-screen">
       <PixelPanel>
         <div className="timer-header">
-          <span className={`timer-phase timer-phase--${paused ? 'paused' : view.phase}`}>
-            {phaseLabel}
-          </span>
+          <span className={`timer-phase timer-phase--${phaseClass}`}>{phaseLabel}</span>
           <span className="timer-round">
             Round {view.round} of {view.config.rounds}
           </span>
@@ -122,6 +124,12 @@ function TimerScreen({ session }: TimerScreenProps): React.JSX.Element {
             valueText={`${percent}%`}
           />
           <RoundDots total={view.config.rounds} round={view.round} phase={view.phase} />
+          {away && (
+            <p className="pixel-note" role="status">
+              The clock stopped because there was no keyboard or mouse use for a while. Move the
+              mouse or press a key to carry on.
+            </p>
+          )}
         </div>
       </PixelPanel>
 
@@ -130,6 +138,9 @@ function TimerScreen({ session }: TimerScreenProps): React.JSX.Element {
           <li>Quest: {goalTitle ?? '...'}</li>
           {session.todoId !== null && <li>Task: {todoTitle ?? '...'}</li>}
           <li>Focused so far: {formatFocused(focusedMsSoFar(view, now))}</li>
+          {awayMsSoFar(view, now) > 0 && (
+            <li>Time away: {formatFocused(awayMsSoFar(view, now))}</li>
+          )}
           <li>
             Strictness: {STRICTNESS_INFO[view.config.strictness].label}.{' '}
             {pauseRuleText(view.config.strictness)}
