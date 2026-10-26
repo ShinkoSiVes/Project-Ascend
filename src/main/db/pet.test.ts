@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from './database';
-import { addXp, choosePet, getPetRecord, getPetState, totalXp } from './pet';
+import { addXp, choosePet, getPetRecord, getPetState, lastFocusedAt, totalXp } from './pet';
 
 let db: DatabaseSync;
 
@@ -89,6 +89,37 @@ describe('addXp and totalXp', () => {
     expect(() =>
       db.prepare("INSERT INTO xp_events (source, ref_id, amount) VALUES ('cheat', 1, 5)").run()
     ).toThrow();
+  });
+});
+
+describe('lastFocusedAt', () => {
+  it('is null before any session has paid XP', () => {
+    expect(lastFocusedAt(db)).toBeNull();
+  });
+
+  it('follows the latest session payout and ignores tasks', () => {
+    addXp(db, 'session', 1, 10);
+    db.prepare(
+      "UPDATE xp_events SET created_at = '2026-10-20T08:00:00.000Z' WHERE source = 'session'"
+    ).run();
+    addXp(db, 'task', 1, 25);
+
+    expect(lastFocusedAt(db)).toBe('2026-10-20T08:00:00.000Z');
+
+    addXp(db, 'session', 2, 10);
+    expect(new Date(lastFocusedAt(db) as string).getTime()).toBeGreaterThan(
+      Date.parse('2026-10-20T08:00:00.000Z')
+    );
+  });
+
+  it('is part of the pet state', () => {
+    choosePet(db, { species: 'ember', name: 'Bean' });
+    expect(getPetState(db)?.lastFocusedAt).toBeNull();
+
+    addXp(db, 'session', 1, 10);
+
+    expect(getPetState(db)?.lastFocusedAt).toEqual(lastFocusedAt(db));
+    expect(getPetState(db)?.lastFocusedAt).not.toBeNull();
   });
 });
 

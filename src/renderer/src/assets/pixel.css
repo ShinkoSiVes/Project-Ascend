@@ -603,6 +603,125 @@ select.pixel-input {
   }
 }
 
+/* Pets: sprites, the starter cards, the dashboard panel and the evolution moment. */
+.pet-sprite {
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.pixel-choice__body--ember {
+  --choice-accent: #ff7a45;
+}
+
+.pixel-choice__body--tide {
+  --choice-accent: #4db3ff;
+}
+
+.pixel-choice__body--leaf {
+  --choice-accent: var(--color-green);
+}
+
+.starter-card {
+  align-items: center;
+  text-align: center;
+}
+
+.pet-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+
+.pet-panel__info {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pet-panel__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  color: var(--color-yellow);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.pet-panel__species {
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.pet-panel__gain {
+  color: var(--color-green);
+  font-size: 12px;
+  animation: gain-in 400ms steps(4) 1;
+}
+
+@keyframes gain-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Evolution: the old form flickers gently (well under three times a second), then the new one
+   bounces in. Reduced motion switches both off. */
+.evolution {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 180px;
+}
+
+.evolution--before .pet-sprite {
+  animation: evolve-flicker 700ms steps(1) infinite;
+}
+
+.evolution--after .pet-sprite {
+  animation: evolve-bounce 800ms steps(8) 1;
+}
+
+@keyframes evolve-flicker {
+  0% {
+    filter: none;
+  }
+
+  50% {
+    filter: brightness(2);
+  }
+}
+
+@keyframes evolve-bounce {
+  0% {
+    transform: scale(0.2);
+  }
+
+  60% {
+    transform: scale(1.15) translateY(-12px);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.evolution__text {
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 /* Version list in the footer of the placeholder screen. */
 .versions {
   display: flex;

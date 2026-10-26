@@ -160,6 +160,16 @@ describe('telling the window', () => {
     expect(updates.filter((update) => update.evolved)).toHaveLength(2);
   });
 
+  it('includes when the pet last focused, which only a session sets', () => {
+    service.choose({ species: 'ember', name: 'Bean' });
+
+    service.awardTask(1);
+    expect(updates[0].pet.lastFocusedAt).toBeNull();
+
+    service.awardSession(1, endedSession(10, 'abandoned'));
+    expect(updates[1].pet.lastFocusedAt).not.toBeNull();
+  });
+
   it('stays quiet before a starter is chosen, but keeps the XP for later', () => {
     service.awardTask(1);
     service.awardSession(1, endedSession(40, 'completed'));
