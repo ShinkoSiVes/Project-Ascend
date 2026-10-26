@@ -3,8 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { is } from '@electron-toolkit/utils';
 import { createGoal, listGoals } from './db/goals';
 import { createTodo, deleteTodo, listTodos, moveTodo, setTodoDone, updateTodo } from './db/todos';
-import type { PetService } from './pet/petService';
-import type { SessionManager } from './session/sessionManager';
+import type { Services } from './services';
 
 // Only the app's own page may call the main process, never a frame that navigated elsewhere.
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -27,11 +26,9 @@ function assertTrusted(event: IpcMainInvokeEvent): void {
 }
 
 // Registers every channel the renderer can call. Add one handler per feature here.
-export function registerIpcHandlers(
-  db: DatabaseSync,
-  sessions: SessionManager,
-  pets: PetService
-): void {
+export function registerIpcHandlers(db: DatabaseSync, services: Services): void {
+  const { sessions, pets, runs } = services;
+
   ipcMain.handle('goals:list', (event) => {
     assertTrusted(event);
     return listGoals(db);
@@ -85,6 +82,46 @@ export function registerIpcHandlers(
   ipcMain.handle('pet:choose', (event, input: unknown) => {
     assertTrusted(event);
     return pets.choose(input);
+  });
+
+  ipcMain.handle('run:get', (event) => {
+    assertTrusted(event);
+    return runs.current();
+  });
+
+  ipcMain.handle('run:start', (event, input: unknown) => {
+    assertTrusted(event);
+    return runs.start(input);
+  });
+
+  ipcMain.handle('run:pickPerk', (event, input: unknown) => {
+    assertTrusted(event);
+    return runs.pickPerk(input);
+  });
+
+  ipcMain.handle('run:reroll', (event) => {
+    assertTrusted(event);
+    return runs.reroll();
+  });
+
+  ipcMain.handle('run:abandon', (event) => {
+    assertTrusted(event);
+    return runs.abandon();
+  });
+
+  ipcMain.handle('run:dismiss', (event) => {
+    assertTrusted(event);
+    runs.dismiss();
+  });
+
+  ipcMain.handle('run:history', (event, limit: unknown) => {
+    assertTrusted(event);
+    return runs.history(typeof limit === 'number' ? limit : undefined);
+  });
+
+  ipcMain.handle('run:stats', (event) => {
+    assertTrusted(event);
+    return runs.stats();
   });
 
   ipcMain.handle('session:get', (event) => {

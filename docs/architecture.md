@@ -34,7 +34,7 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 
 - **Migrations:** versioned SQL in `src/main/db/migrations.ts`, applied in order inside a transaction and tracked with SQLite's `user_version`. A shipped migration is never edited; changes go in a new one.
 - **Validation:** the renderer is untrusted, so the main process validates every input and the tables also carry `CHECK` constraints as a second line of defense.
-- **Tables:** `goals`, `settings`, `todos`, `sessions`, `pets` and `xp_events` exist now; the rest are added by the step that needs them. Planned tables:
+- **Tables:** `goals`, `settings`, `todos`, `sessions`, `pets`, `xp_events` and `runs` exist now; the rest are added by the step that needs them. Planned tables:
 
 | Table | Purpose |
 |---|---|
@@ -113,6 +113,17 @@ The run rules are pure data and functions in `src/shared/run.ts` (stages, quotas
 - **Focus.** `recordFocus` counts a finished session's focus time toward today's stage, but only for the run's quest. Reaching the quota clears the stage and offers 3 perks. Clearing the last stage wins the run.
 - **Perks.** Offers are drawn with a seed made from the run, the stage and the redraw count, so an offer can be replayed. An unpicked offer expires at midnight.
 - **Time.** The state stores no timers. It is plain JSON, so it can be saved and restored at any moment.
+
+### Saving runs
+
+`RunManager` (`src/main/run/`) owns the one active run, like `SessionManager` owns the session.
+
+- **One table.** `runs` holds the active run and every finished one: the state as JSON, plus copies of the status, stage reached and cleared count for queries. A unique index allows only one active run, and a damaged row is closed instead of blocking new runs. The finished rows are the run history. Best stage, runs played and runs won are read from them, and total focus time from the finished sessions, so they survive every run.
+- **The caller only picks the quest.** `run.start` takes a quest id, and the main process reads that quest's hours and difficulty itself, so quota numbers cannot be made up by the window.
+- **A result waits to be read.** A run that fails or is won stays on hand, unread, until it is dismissed. That includes a run that failed while the app was closed. A run the person abandons has nothing to read.
+- **Sessions.** When a session ends, it pays the pet and counts toward the run. The wiring is in `src/main/services.ts` and has no Electron in it, so the whole chain is tested. The run's XP boost applies only to sessions for the run's quest, and it is worked out as it stood when the session ended, so a perk picked because of a session cannot raise that session's own pay.
+- **Midnight.** The main process ticks every second, and a tick settles any day that has passed.
+- **Startup order matters.** The active run is loaded first, without settling its days. Then a session left unfinished by a crash is closed, so its focus counts for the day it happened on. Only then are the days that passed while the app was closed settled. Settling first would fail a run whose quota was in fact met before the crash.
 
 ## Focus enforcement
 

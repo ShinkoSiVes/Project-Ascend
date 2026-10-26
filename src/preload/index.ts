@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Goal, NewGoal } from '../shared/goal';
 import type { PetState, PetUpdate, SpeciesId } from '../shared/pet';
+import type { PerkId, RunState, RunStats, RunSummary } from '../shared/run';
 import type { NewSession, SessionState } from '../shared/session';
 import type { MoveDirection, NewTodo, Todo, TodoChanges } from '../shared/todo';
 
@@ -38,6 +39,28 @@ const api = {
       ipcRenderer.on('pet:changed', listener);
       return () => {
         ipcRenderer.removeListener('pet:changed', listener);
+      };
+    }
+  },
+  run: {
+    // The active run, or a finished one waiting to be read, or null.
+    get: (): Promise<RunState | null> => ipcRenderer.invoke('run:get'),
+    // Starts a run for a quest. Only the quest is chosen here; the main process reads its hours
+    // and difficulty itself.
+    start: (goalId: number): Promise<RunState> => ipcRenderer.invoke('run:start', { goalId }),
+    pickPerk: (perk: PerkId): Promise<RunState> => ipcRenderer.invoke('run:pickPerk', { perk }),
+    reroll: (): Promise<RunState> => ipcRenderer.invoke('run:reroll'),
+    abandon: (): Promise<RunState> => ipcRenderer.invoke('run:abandon'),
+    // Marks the result of a failed or won run as read.
+    dismiss: (): Promise<void> => ipcRenderer.invoke('run:dismiss'),
+    history: (limit?: number): Promise<RunSummary[]> => ipcRenderer.invoke('run:history', limit),
+    stats: (): Promise<RunStats> => ipcRenderer.invoke('run:stats'),
+    // Calls back whenever the run changes. Returns a function that stops listening.
+    onChange: (callback: (state: RunState) => void): (() => void) => {
+      const listener = (_event: IpcRendererEvent, state: RunState): void => callback(state);
+      ipcRenderer.on('run:changed', listener);
+      return () => {
+        ipcRenderer.removeListener('run:changed', listener);
       };
     }
   },

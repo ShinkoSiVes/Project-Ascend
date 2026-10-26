@@ -33,11 +33,13 @@ export class PetService {
     return this.get() as PetState;
   }
 
-  // Pays for a session that has ended: its focused minutes, plus a bonus if it was completed.
-  // Returns the XP paid, which is 0 if this session was already paid or earned nothing.
-  awardSession(sessionId: number, state: SessionState): number {
-    const amount = sessionXp(state.focusedMs, state.endReason === 'completed');
-    return this.award('session', sessionId, amount);
+  // Pays for a session that has ended: its focused minutes, plus a bonus if it was completed,
+  // times a multiplier such as a run's XP boost. Returns the XP paid, which is 0 if this session
+  // was already paid or earned nothing.
+  awardSession(sessionId: number, state: SessionState, multiplier = 1): number {
+    const base = sessionXp(state.focusedMs, state.endReason === 'completed');
+    const factor = Number.isFinite(multiplier) ? Math.max(0, multiplier) : 1;
+    return this.award('session', sessionId, Math.round(base * factor));
   }
 
   // Pays the bonus for finishing a task. Checking the same task off again pays nothing more.

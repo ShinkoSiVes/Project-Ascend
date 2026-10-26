@@ -85,6 +85,45 @@ describe('awardSession', () => {
   });
 });
 
+describe('awardSession with a multiplier', () => {
+  beforeEach(() => {
+    service.choose({ species: 'tide', name: 'Drop' });
+  });
+
+  it('multiplies the XP and rounds it to a whole number', () => {
+    expect(service.awardSession(1, endedSession(100, 'completed'), 1.25)).toBe(188);
+
+    expect(service.get()?.xp).toBe(188);
+  });
+
+  it('pays the plain amount when no multiplier is given', () => {
+    expect(service.awardSession(1, endedSession(10, 'abandoned'))).toBe(10);
+  });
+
+  it.each([
+    ['zero', 0, 0],
+    ['a negative number', -3, 0],
+    ['NaN', NaN, 10],
+    ['Infinity', Infinity, 10]
+  ])('copes with %s', (_name, multiplier, expected) => {
+    expect(service.awardSession(1, endedSession(10, 'abandoned'), multiplier)).toBe(expected);
+  });
+
+  it('records nothing and stays quiet when the boosted amount is zero', () => {
+    service.awardSession(1, endedSession(10, 'abandoned'), 0);
+
+    expect(totalXp(db)).toBe(0);
+    expect(updates).toEqual([]);
+  });
+
+  it('still pays a session only once, whatever the multiplier', () => {
+    service.awardSession(1, endedSession(10, 'abandoned'), 2);
+
+    expect(service.awardSession(1, endedSession(10, 'abandoned'), 5)).toBe(0);
+    expect(totalXp(db)).toBe(20);
+  });
+});
+
 describe('awardTask', () => {
   beforeEach(() => {
     service.choose({ species: 'leaf', name: 'Fern' });

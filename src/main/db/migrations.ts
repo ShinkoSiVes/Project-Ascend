@@ -86,6 +86,33 @@ export const migrations: Migration[] = [
         UNIQUE (source, ref_id)
       );
     `
+  },
+  {
+    version: 5,
+    sql: `
+      -- Every run, active or finished. The finished ones are the run history.
+      CREATE TABLE runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        goal_id INTEGER NOT NULL REFERENCES goals (id) ON DELETE CASCADE,
+        state TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active', 'failed', 'completed', 'abandoned')),
+        seed INTEGER NOT NULL,
+        stages_total INTEGER NOT NULL CHECK (stages_total >= 1),
+        stage_reached INTEGER NOT NULL CHECK (stage_reached >= 1),
+        stages_cleared INTEGER NOT NULL DEFAULT 0 CHECK (stages_cleared >= 0),
+        start_day TEXT NOT NULL,
+        end_day TEXT,
+        -- A run that failed or was won stays unseen until the person has read its result.
+        seen INTEGER NOT NULL DEFAULT 1 CHECK (seen IN (0, 1)),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+
+      CREATE INDEX idx_runs_goal ON runs (goal_id, id);
+
+      -- At most one run can be active at a time. The index is on a constant, so a second row
+      -- with status 'active' collides with the first.
+      CREATE UNIQUE INDEX idx_runs_one_active ON runs ((1)) WHERE status = 'active';
+    `
   }
 ];
 

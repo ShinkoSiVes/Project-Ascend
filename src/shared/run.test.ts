@@ -22,6 +22,7 @@ import {
   roundUpQuota,
   stageCount,
   stageDay,
+  stageReached,
   stagesCleared,
   xpMultiplier,
   type RunState
@@ -372,6 +373,12 @@ describe('run helpers', () => {
 
   it('finds the current stage', () => {
     expect(currentStage(run).index).toBe(3);
+  });
+
+  it('says which stage a run reached, whatever happened to it', () => {
+    expect(stageReached(run)).toBe(3);
+    expect(stageReached({ ...run, status: 'failed' })).toBe(3);
+    expect(stageReached({ ...run, stageIndex: 1 })).toBe(1);
   });
 
   it('says how much focus is still needed, never below zero', () => {

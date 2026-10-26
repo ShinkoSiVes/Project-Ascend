@@ -150,7 +150,7 @@ export const PERKS: Record<PerkId, { name: string; blurb: string }> = {
   shield: { name: 'Shield', blurb: 'Forgives one missed daily quota.' },
   xpBoost: {
     name: 'XP boost',
-    blurb: `+${XP_BOOST_PERCENT}% XP from focus sessions for the rest of the run.`
+    blurb: `+${XP_BOOST_PERCENT}% XP from sessions for the run's quest, for the rest of the run.`
   },
   lighterQuota: { name: 'Lighter quota', blurb: "Tomorrow's quota is 30% smaller." },
   reroll: { name: 'Reroll', blurb: 'Redraw the perk offers once, at any later draft.' }
@@ -232,6 +232,33 @@ export function remainingQuotaMs(run: RunState): number {
 // How many stages were cleared or forgiven, counting the current one if it is already cleared.
 export function stagesCleared(run: RunState): number {
   return run.results.length + (run.status === 'active' && run.cleared ? 1 : 0);
+}
+
+// The stage the run was on when it ended, or is on now. It is what counts as the best stage.
+export function stageReached(run: RunState): number {
+  return run.stageIndex;
+}
+
+// One line of the run history.
+export interface RunSummary {
+  id: number;
+  goalId: number;
+  goalTitle: string;
+  startDay: string;
+  endDay: string | null;
+  status: RunStatus;
+  stagesTotal: number;
+  stageReached: number;
+  stagesCleared: number;
+}
+
+// Totals across every run, kept after a run ends.
+export interface RunStats {
+  bestStage: number;
+  runsPlayed: number;
+  runsWon: number;
+  // All the focus time ever done in finished sessions, in milliseconds.
+  totalFocusMs: number;
 }
 
 // The multiplier on session XP while the run is active.
