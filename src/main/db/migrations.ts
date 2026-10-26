@@ -24,6 +24,23 @@ export const migrations: Migration[] = [
         value TEXT NOT NULL
       );
     `
+  },
+  {
+    version: 2,
+    sql: `
+      CREATE TABLE todos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        goal_id INTEGER NOT NULL REFERENCES goals (id) ON DELETE CASCADE,
+        title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 200),
+        estimate_pomodoros INTEGER CHECK (estimate_pomodoros BETWEEN 1 AND 99),
+        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done')),
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        completed_at TEXT
+      );
+
+      CREATE INDEX idx_todos_goal_position ON todos (goal_id, position);
+    `
   }
 ];
 

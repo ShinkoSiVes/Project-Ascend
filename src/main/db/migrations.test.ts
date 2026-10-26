@@ -20,7 +20,23 @@ describe('runMigrations', () => {
     runMigrations(db);
 
     expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
-    expect(tableNames(db)).toEqual(['goals', 'settings']);
+    expect(tableNames(db)).toEqual(['goals', 'settings', 'todos']);
+  });
+
+  it('upgrades a version 1 database without losing its goals', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db, [migrations[0]]);
+    db.prepare(
+      "INSERT INTO goals (title, target_hours, difficulty, strictness) VALUES ('old goal', 2, 3, 'hard')"
+    ).run();
+    expect(userVersion(db)).toBe(1);
+
+    runMigrations(db);
+
+    expect(userVersion(db)).toBe(2);
+    expect(tableNames(db)).toContain('todos');
+    const goal = db.prepare('SELECT title FROM goals').get() as { title: string };
+    expect(goal.title).toBe('old goal');
   });
 
   it('does nothing when run twice', () => {

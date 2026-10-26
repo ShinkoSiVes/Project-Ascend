@@ -34,12 +34,12 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 
 - **Migrations:** versioned SQL in `src/main/db/migrations.ts`, applied in order inside a transaction and tracked with SQLite's `user_version`. A shipped migration is never edited; changes go in a new one.
 - **Validation:** the renderer is untrusted, so the main process validates every input and the tables also carry `CHECK` constraints as a second line of defense.
-- **Tables:** `goals` and `settings` exist now; the rest are added by the step that needs them. Planned tables:
+- **Tables:** `goals`, `settings` and `todos` exist now; the rest are added by the step that needs them. Planned tables:
 
 | Table | Purpose |
 |---|---|
 | `goals` | Title, target hours, difficulty (1 to 5), strictness default, created date |
-| `todos` | Per-goal tasks: title, pomodoro estimate, status, order, completed date |
+| `todos` | Per-goal tasks: title, pomodoro estimate, status (open or done), position, completed date |
 | `runs` | One row per run: goal, seed, tier, current stage, status, cause of end |
 | `stages` | Generated stages of a run: type, biome, modifiers, quota, window, result |
 | `sessions` | Focus sessions: stage, active to-do, start/end, focused seconds, distractions, state |

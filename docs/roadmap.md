@@ -8,7 +8,7 @@ Status values: `todo`, `in progress`, `done`.
 |---|---|---|
 | 0 | Planning and documentation | done |
 | 1 | Scaffold, database and dashboard | done |
-| 2 | Pomodoro timer and to-do list | todo |
+| 2 | Pomodoro timer and to-do list | in progress |
 | 3 | Pet, starters, XP and evolution | todo |
 | 4 | Stage generator, quotas and roguelike runs | todo |
 | 5 | Enforcement: window detection, lock screen, recovery | todo |

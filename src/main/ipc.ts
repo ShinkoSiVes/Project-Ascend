@@ -2,6 +2,7 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type { DatabaseSync } from 'node:sqlite';
 import { is } from '@electron-toolkit/utils';
 import { createGoal, listGoals } from './db/goals';
+import { createTodo, deleteTodo, listTodos, moveTodo, setTodoDone, updateTodo } from './db/todos';
 
 // Only the app's own page may call the main process, never a frame that navigated elsewhere.
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -33,5 +34,35 @@ export function registerIpcHandlers(db: DatabaseSync): void {
   ipcMain.handle('goals:create', (event, input: unknown) => {
     assertTrusted(event);
     return createGoal(db, input);
+  });
+
+  ipcMain.handle('todos:list', (event, goalId: unknown) => {
+    assertTrusted(event);
+    return listTodos(db, goalId);
+  });
+
+  ipcMain.handle('todos:create', (event, input: unknown) => {
+    assertTrusted(event);
+    return createTodo(db, input);
+  });
+
+  ipcMain.handle('todos:update', (event, input: unknown) => {
+    assertTrusted(event);
+    return updateTodo(db, input);
+  });
+
+  ipcMain.handle('todos:setDone', (event, input: unknown) => {
+    assertTrusted(event);
+    return setTodoDone(db, input);
+  });
+
+  ipcMain.handle('todos:move', (event, input: unknown) => {
+    assertTrusted(event);
+    return moveTodo(db, input);
+  });
+
+  ipcMain.handle('todos:delete', (event, id: unknown) => {
+    assertTrusted(event);
+    return deleteTodo(db, id);
   });
 }
