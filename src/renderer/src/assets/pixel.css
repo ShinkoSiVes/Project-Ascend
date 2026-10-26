@@ -722,6 +722,181 @@ select.pixel-input {
   text-align: center;
 }
 
+/* Runs: the stage map, the perk draft, the run panel and the history. */
+.run-goal {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.run-stage,
+.run-perks {
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.run-perks {
+  color: var(--color-cyan);
+}
+
+.pixel-badge--run {
+  background: var(--color-cyan);
+}
+
+.stage-map {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: var(--pixel);
+}
+
+.stage-map__legend {
+  margin-top: 12px;
+  font-size: 10px;
+}
+
+.stage-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-ink-dim);
+  background: var(--color-line);
+  font-size: 10px;
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--marker-edge, var(--color-edge)),
+    0 var(--pixel) 0 0 var(--marker-edge, var(--color-edge)),
+    calc(var(--pixel) * -1) 0 0 0 var(--marker-edge, var(--color-edge)),
+    var(--pixel) 0 0 0 var(--marker-edge, var(--color-edge));
+}
+
+.stage-marker--boss {
+  --marker-edge: var(--color-red);
+}
+
+.stage-marker--rest {
+  --marker-edge: var(--color-cyan);
+}
+
+.stage-marker--cleared {
+  color: var(--color-line);
+  background: var(--color-green);
+}
+
+.stage-marker--forgiven {
+  color: var(--color-line);
+  background: var(--color-yellow);
+}
+
+.stage-marker--today,
+.stage-marker--todayCleared {
+  color: var(--color-ink);
+  background: var(--color-panel);
+  outline: var(--pixel) solid var(--color-yellow);
+  outline-offset: calc(var(--pixel) * 2);
+}
+
+.stage-marker--todayCleared {
+  color: var(--color-line);
+  background: var(--color-green);
+}
+
+.stage-marker--failed {
+  color: var(--color-line);
+  background: var(--color-red);
+}
+
+.stage-marker__tag {
+  position: absolute;
+  right: -6px;
+  bottom: -10px;
+  padding: 0 2px;
+  color: var(--color-ink);
+  background: var(--color-line);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.perk-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.perk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: var(--pixel);
+  padding: 12px;
+  border: 0;
+  color: var(--color-ink);
+  background: var(--color-bg-raised);
+  font-family: var(--font-pixel);
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--color-yellow),
+    0 var(--pixel) 0 0 var(--color-yellow),
+    calc(var(--pixel) * -1) 0 0 0 var(--color-yellow),
+    var(--pixel) 0 0 0 var(--color-yellow);
+}
+
+.perk-card:hover:not(:disabled) {
+  filter: brightness(1.25);
+}
+
+.perk-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.perk-card__name {
+  color: var(--color-yellow);
+  font-size: 12px;
+}
+
+.perk-card__blurb {
+  color: var(--color-ink-dim);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+}
+
+.history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: 12px;
+  border-top: 2px solid var(--color-line);
+}
+
+.history-item__title {
+  flex: 1 1 160px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.history-item__detail {
+  color: var(--color-ink-dim);
+  font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .perk-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Version list in the footer of the placeholder screen. */
 .versions {
   display: flex;

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { SESSION_LIMITS } from '../../../shared/session';
 import type { Goal, Strictness } from '../../../shared/goal';
+import type { RunState } from '../../../shared/run';
 import type { Todo } from '../../../shared/todo';
 import { friendlyError } from '../lib/errors';
 import {
@@ -10,6 +11,7 @@ import {
   type SessionFormNumbers,
   type SessionNumberKey
 } from '../lib/sessionForm';
+import { sessionRunHint } from '../lib/runView';
 import { pauseRuleText } from '../lib/strictness';
 import NumberField from './NumberField';
 import PixelButton from './PixelButton';
@@ -18,6 +20,8 @@ import StrictnessPicker from './StrictnessPicker';
 
 interface PrepScreenProps {
   goal: Goal;
+  // The active run, so the screen can say whether this session counts toward its quota.
+  run: RunState | null;
   onCancel: () => void;
 }
 
@@ -32,7 +36,8 @@ const NUMBER_UNITS: Record<SessionNumberKey, string | undefined> = {
 
 // The preparation screen: choose the task, the strictness and the Pomodoro lengths, then start.
 // Starting creates the session in the main process, which then pushes it to the whole app.
-function PrepScreen({ goal, onCancel }: PrepScreenProps): React.JSX.Element {
+function PrepScreen({ goal, run, onCancel }: PrepScreenProps): React.JSX.Element {
+  const runHint = sessionRunHint(run, goal.id);
   const [tasks, setTasks] = useState<Todo[]>([]);
   const [todoId, setTodoId] = useState('');
   const [strictness, setStrictness] = useState<Strictness>(goal.strictness);
@@ -87,7 +92,10 @@ function PrepScreen({ goal, onCancel }: PrepScreenProps): React.JSX.Element {
   return (
     <>
       <PixelPanel title="Prepare your session">
-        <p className="prep-goal">{goal.title}</p>
+        <div className="pixel-stack">
+          <p className="prep-goal">{goal.title}</p>
+          {runHint && <p className="pixel-note">{runHint}</p>}
+        </div>
       </PixelPanel>
 
       <PixelPanel title="Setup">
