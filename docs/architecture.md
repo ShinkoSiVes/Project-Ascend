@@ -103,6 +103,17 @@ The pet rules are pure data and functions in `src/shared/pet.ts`. `PetService` (
 - **Screens:** a starter picker on first launch, a pet panel on the dashboard with an XP bar and a "+XP" note, "XP earned" on the session result, and an evolution screen. An evolution that happens while a session ends waits until the result has been read. With reduced motion switched on, the evolution screen shows the new form at once and nothing flickers.
 - **When XP is paid:** the session manager tells the service when a session ends, including a session closed by crash recovery. Finishing a task pays through the IPC handler. XP earned before a starter is chosen stays in the ledger and counts once one is chosen.
 
+## Runs
+
+The run rules are pure data and functions in `src/shared/run.ts` (stages, quotas, perks, calendar days) and `src/shared/runEngine.ts` (the transitions), like the session engine. They have no clock inside: every function takes the time as an argument and returns a new state, never changing the old one.
+
+- **A stage is a calendar day.** Stage *k* takes place on `startDay + k - 1`, so the schedule cannot drift. A day is a local `YYYY-MM-DD` and ends at midnight. Day arithmetic is plain calendar maths, so a daylight saving change cannot shift it.
+- **The map is generated once.** `generateStages` turns a seed, the quest's target hours and its difficulty into the stages, using a small seeded random generator (`mulberry32`). The result is stored in the run, so a later balance change cannot alter a run in progress.
+- **Settling days.** `advanceRun(run, now)` settles every stage whose day has passed, in order: a cleared stage moves on, an uncleared one spends a Shield or fails the run. A run that was not opened for days ends up exactly where the calendar says, the same way the session engine catches up after a sleep.
+- **Focus.** `recordFocus` counts a finished session's focus time toward today's stage, but only for the run's quest. Reaching the quota clears the stage and offers 3 perks. Clearing the last stage wins the run.
+- **Perks.** Offers are drawn with a seed made from the run, the stage and the redraw count, so an offer can be replayed. An unpicked offer expires at midnight.
+- **Time.** The state stores no timers. It is plain JSON, so it can be saved and restored at any moment.
+
 ## Focus enforcement
 
 - **Active window:** the main process polls the foreground window (planned library: `active-win`) and matches the process name and window title against the allowed and blocked app lists.

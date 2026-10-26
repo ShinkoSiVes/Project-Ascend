@@ -10,7 +10,7 @@ Status values: `todo`, `in progress`, `done`.
 | 1 | Scaffold, database and dashboard | done |
 | 2 | Pomodoro timer and to-do list | done |
 | 3 | Pet, starters, XP and evolution | done |
-| 4 | Stage generator, quotas and roguelike runs | todo |
+| 4 | Stage generator, quotas and roguelike runs | in progress |
 | 5 | Enforcement: window detection, lock screen, recovery | todo |
 | 6 | Chrome extension and link whitelist | todo |
 | 7 | Spotify | todo |
@@ -55,13 +55,16 @@ Split into two pull requests: the pure rules, database, XP service and IPC first
 
 ## 4. Stage generator, quotas and roguelike runs
 
-- Seeded stage generator with weighted pools and no-immediate-repeat rule.
-- Quotas, time windows and a difficulty ramp with the difficulty slider.
-- Stage types, modifiers, perk drafting and random events built into the generator from the start.
-- Run engine: missed quota or 0 HP ends the run, resets to Stage 1 with a new seed, and keeps permanent progress.
-- Run history on the dashboard.
+- Seeded stage generator: one stage per calendar day, daily quotas from the difficulty, a ramp, boss days and rest days.
+- Run engine: a missed quota ends the run unless a Shield forgives it, a failed run restarts at stage 1 with a new seed, and the pet keeps its growth. (0 HP from distractions is added in step 5.)
+- Perk drafting after each cleared stage: Shield, XP boost, Lighter quota and Reroll.
+- Run history, best stage and total focus hours on the dashboard.
+- Stage map, daily quota progress, perk draft and run result screens.
+- Stage modifiers, random events and more stage types are left for the engagement layer (7b).
 
-**Done when:** unit tests show the same seed gives the same map, difficulty ramps up, and a failed run resets correctly while permanent stats persist.
+Split into three pull requests: the pure generator and run rules, then saving runs and the daily rollover in the main process, then the screens.
+
+**Done when:** unit tests show the same seed gives the same map, quotas ramp up, a missed day fails the run (or spends a Shield), and a failed run restarts while the pet and the permanent stats persist.
 
 ## 5. Enforcement: window detection, lock screen, recovery
 
