@@ -24,6 +24,9 @@
   /* Every border, gap and notch is a multiple of one pixel unit. */
   --pixel: 4px;
   --font-pixel: 'Press Start 2P', monospace;
+
+  /* Native controls, such as the task dropdown, follow the dark theme. */
+  color-scheme: dark;
 }
 
 *,

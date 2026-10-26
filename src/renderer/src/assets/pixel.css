@@ -498,6 +498,111 @@
   }
 }
 
+/* Prep screen */
+.prep-goal {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.prep-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+select.pixel-input {
+  cursor: pointer;
+}
+
+/* Timer screen: a big countdown, the round squares and a few facts. */
+.timer-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timer-phase {
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.timer-phase--focus {
+  color: var(--color-yellow);
+}
+
+.timer-phase--break {
+  color: var(--color-green);
+}
+
+.timer-phase--paused {
+  color: var(--color-red);
+}
+
+.timer-round {
+  color: var(--color-ink-dim);
+  font-size: 12px;
+}
+
+.timer-clock {
+  margin: 24px 0;
+  font-size: 64px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.timer-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.round-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: var(--pixel);
+}
+
+.round-dot {
+  width: 20px;
+  height: 20px;
+  background: var(--color-line);
+  box-shadow:
+    0 calc(var(--pixel) * -1) 0 0 var(--color-edge),
+    0 var(--pixel) 0 0 var(--color-edge),
+    calc(var(--pixel) * -1) 0 0 0 var(--color-edge),
+    var(--pixel) 0 0 0 var(--color-edge);
+}
+
+.round-dot--done {
+  background: var(--color-green);
+}
+
+.round-dot--current {
+  background: var(--color-yellow);
+}
+
+@media (max-width: 640px) {
+  .prep-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-clock {
+    font-size: 40px;
+  }
+}
+
 /* Version list in the footer of the placeholder screen. */
 .versions {
   display: flex;

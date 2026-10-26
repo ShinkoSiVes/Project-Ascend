@@ -3,10 +3,12 @@ interface PixelBarProps {
   value: number;
   max: number;
   kind: 'hp' | 'xp';
+  // Text shown at the end of the bar. It defaults to "value/max".
+  valueText?: string;
 }
 
 // A segmented progress bar for HP and XP.
-function PixelBar({ label, value, max, kind }: PixelBarProps): React.JSX.Element {
+function PixelBar({ label, value, max, kind, valueText }: PixelBarProps): React.JSX.Element {
   // Keep the fill between 0 and 100 percent even if the value overshoots.
   const percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
 
@@ -26,9 +28,7 @@ function PixelBar({ label, value, max, kind }: PixelBarProps): React.JSX.Element
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="pixel-bar__value">
-        {value}/{max}
-      </span>
+      <span className="pixel-bar__value">{valueText ?? `${value}/${max}`}</span>
     </div>
   );
 }
