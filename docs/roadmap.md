@@ -34,7 +34,7 @@ Status values: `todo`, `in progress`, `done`.
 
 ## 2. Pomodoro timer and to-do list
 
-- Session state machine (`prep`, `focus`, `break`, `ended`) with the timer UI.
+- Session state machine (`prep`, `focus`, `break`, `ended`) with the timer UI. Defaults: 25 minute focus, 5 minute break, 15 minute long break every 4 rounds. Pauses depend on strictness (gentle unlimited, medium 2 pauses of up to 5 minutes, hard none), and abandoning a session keeps the focus time already done.
 - Per-goal to-do list: add, edit, reorder, check off, delete, with a pomodoro estimate.
 - Pick the active to-do in prep, and count focused time against it.
 - Bonus XP on completing a to-do.
