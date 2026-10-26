@@ -34,7 +34,7 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 
 - **Migrations:** versioned SQL in `src/main/db/migrations.ts`, applied in order inside a transaction and tracked with SQLite's `user_version`. A shipped migration is never edited; changes go in a new one.
 - **Validation:** the renderer is untrusted, so the main process validates every input and the tables also carry `CHECK` constraints as a second line of defense.
-- **Tables:** `goals`, `settings` and `todos` exist now; the rest are added by the step that needs them. Planned tables:
+- **Tables:** `goals`, `settings`, `todos` and `sessions` exist now; the rest are added by the step that needs them. Planned tables:
 
 | Table | Purpose |
 |---|---|
@@ -42,7 +42,7 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 | `todos` | Per-goal tasks: title, pomodoro estimate, status (open or done), position, completed date |
 | `runs` | One row per run: goal, seed, tier, current stage, status, cause of end |
 | `stages` | Generated stages of a run: type, biome, modifiers, quota, window, result |
-| `sessions` | Focus sessions: stage, active to-do, start/end, focused seconds, distractions, state |
+| `sessions` | Focus sessions: goal, active to-do, the engine state as JSON, phase, focused time, end reason, last seen. Stage and distraction counts are added later. |
 | `pets` | Species, evolution branch, run level, mood |
 | `dex` | Collected species and variants |
 | `whitelists` | Allowed URLs, domains and path prefixes, per goal |
@@ -77,11 +77,17 @@ The state machine is a pure module in `src/shared/sessionEngine.ts`, with its ty
 - **Abandoning** ends the session but keeps the focus time already done. Whether that fails a stage is decided by the run engine, not here.
 - **Saving.** The state is plain JSON, so it can be stored and restored at any moment.
 
-The session state is written to SQLite on every transition and about every 15 seconds while running.
+The session state is written to SQLite on every transition, and a heartbeat ("last seen") is written every 15 seconds while a session is open and once more when the app quits.
+
+The main process owns the one unfinished session in `SessionManager` (`src/main/session/`). It applies the pure engine to the saved state, saves every change, and pushes each new state to the window, which derives the countdown from it. A ticker calls `tick()` once a second. A unique index on `sessions` allows at most one unfinished session, and a damaged row is closed instead of blocking new sessions.
+
+Known limit: the engine counts wall-clock time, so a laptop that sleeps in the middle of a round still counts that time as focus. Idle and away detection (roadmap step 5) will stop the clock while nobody is at the keyboard.
 
 ### Session recovery
 
-On launch the app checks for a session left in `focus`. If one exists in medium or hard strictness, it was quit or killed mid-session, so the stage is marked failed. In gentle mode the user is offered to resume. This is how the no-quiet-exit rule works without needing to stop the process.
+On launch the app checks for a session left unfinished. If one exists, it was quit or killed mid-session. The time the app was closed must not count as focus, so the session is ended as abandoned at its last heartbeat, and only the focus time before that counts. This is how the no-quiet-exit rule works without needing to stop the process.
+
+Planned for roadmap step 5: in medium or hard strictness the stage is also marked failed, and in gentle mode the user is offered to resume.
 
 ## Focus enforcement
 

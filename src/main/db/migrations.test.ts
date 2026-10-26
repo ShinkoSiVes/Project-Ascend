@@ -20,7 +20,28 @@ describe('runMigrations', () => {
     runMigrations(db);
 
     expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
-    expect(tableNames(db)).toEqual(['goals', 'settings', 'todos']);
+    expect(tableNames(db)).toEqual(['goals', 'sessions', 'settings', 'todos']);
+  });
+
+  it('upgrades a version 2 database without losing goals or tasks', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations.slice(0, 2));
+    db.prepare(
+      "INSERT INTO goals (title, target_hours, difficulty, strictness) VALUES ('old goal', 2, 3, 'hard')"
+    ).run();
+    db.prepare("INSERT INTO todos (goal_id, title, position) VALUES (1, 'old task', 1)").run();
+    expect(userVersion(db)).toBe(2);
+
+    runMigrations(db);
+
+    expect(userVersion(db)).toBe(3);
+    expect(tableNames(db)).toContain('sessions');
+    expect((db.prepare('SELECT title FROM goals').get() as { title: string }).title).toBe(
+      'old goal'
+    );
+    expect((db.prepare('SELECT title FROM todos').get() as { title: string }).title).toBe(
+      'old task'
+    );
   });
 
   it('upgrades a version 1 database without losing its goals', () => {
@@ -33,7 +54,7 @@ describe('runMigrations', () => {
 
     runMigrations(db);
 
-    expect(userVersion(db)).toBe(2);
+    expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
     expect(tableNames(db)).toContain('todos');
     const goal = db.prepare('SELECT title FROM goals').get() as { title: string };
     expect(goal.title).toBe('old goal');

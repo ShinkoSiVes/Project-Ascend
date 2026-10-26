@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { is } from '@electron-toolkit/utils';
 import { createGoal, listGoals } from './db/goals';
 import { createTodo, deleteTodo, listTodos, moveTodo, setTodoDone, updateTodo } from './db/todos';
+import type { SessionManager } from './session/sessionManager';
 
 // Only the app's own page may call the main process, never a frame that navigated elsewhere.
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -25,7 +26,7 @@ function assertTrusted(event: IpcMainInvokeEvent): void {
 }
 
 // Registers every channel the renderer can call. Add one handler per feature here.
-export function registerIpcHandlers(db: DatabaseSync): void {
+export function registerIpcHandlers(db: DatabaseSync, sessions: SessionManager): void {
   ipcMain.handle('goals:list', (event) => {
     assertTrusted(event);
     return listGoals(db);
@@ -64,5 +65,35 @@ export function registerIpcHandlers(db: DatabaseSync): void {
   ipcMain.handle('todos:delete', (event, id: unknown) => {
     assertTrusted(event);
     return deleteTodo(db, id);
+  });
+
+  ipcMain.handle('session:get', (event) => {
+    assertTrusted(event);
+    return sessions.current();
+  });
+
+  ipcMain.handle('session:create', (event, input: unknown) => {
+    assertTrusted(event);
+    return sessions.create(input);
+  });
+
+  ipcMain.handle('session:start', (event) => {
+    assertTrusted(event);
+    return sessions.start();
+  });
+
+  ipcMain.handle('session:pause', (event) => {
+    assertTrusted(event);
+    return sessions.pause();
+  });
+
+  ipcMain.handle('session:resume', (event) => {
+    assertTrusted(event);
+    return sessions.resume();
+  });
+
+  ipcMain.handle('session:abandon', (event) => {
+    assertTrusted(event);
+    return sessions.abandon();
   });
 }
