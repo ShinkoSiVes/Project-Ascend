@@ -41,6 +41,28 @@ export const migrations: Migration[] = [
 
       CREATE INDEX idx_todos_goal_position ON todos (goal_id, position);
     `
+  },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        goal_id INTEGER NOT NULL REFERENCES goals (id) ON DELETE CASCADE,
+        todo_id INTEGER REFERENCES todos (id) ON DELETE SET NULL,
+        state TEXT NOT NULL,
+        phase TEXT NOT NULL CHECK (phase IN ('prep', 'focus', 'break', 'ended')),
+        focused_ms INTEGER NOT NULL DEFAULT 0 CHECK (focused_ms >= 0),
+        end_reason TEXT CHECK (end_reason IN ('completed', 'abandoned')),
+        last_seen_ms INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+
+      CREATE INDEX idx_sessions_goal ON sessions (goal_id, id);
+
+      -- At most one session can be unfinished at a time. The index is on a constant, so any
+      -- second row that is not 'ended' collides with the first.
+      CREATE UNIQUE INDEX idx_sessions_one_active ON sessions ((1)) WHERE phase <> 'ended';
+    `
   }
 ];
 

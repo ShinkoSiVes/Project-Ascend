@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { openDatabase } from './db/database';
 import { registerIpcHandlers } from './ipc';
+import { SessionManager } from './session/sessionManager';
 
 function createWindow(): void {
   // Create the browser window.
@@ -73,8 +74,34 @@ app.whenReady().then(() => {
   // Open the database before any window exists, so the renderer never calls a missing handler.
   try {
     const db = openDatabase(join(app.getPath('userData'), 'ascend.db'));
-    registerIpcHandlers(db);
-    app.on('will-quit', () => db.close());
+
+    // Every change to the session is pushed to the open windows, which show the countdown.
+    const sessions = new SessionManager(db, Date.now, (state) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) {
+          window.webContents.send('session:changed', state);
+        }
+      }
+    });
+
+    // A session left unfinished by a crash or a quit is closed before anything else runs.
+    sessions.recover();
+    registerIpcHandlers(db, sessions);
+
+    // The session clock ticks once a second. A failed tick is logged and the next one retries.
+    const ticker = setInterval(() => {
+      try {
+        sessions.tick();
+      } catch (error) {
+        console.error('Session tick failed', error);
+      }
+    }, 1000);
+
+    app.on('will-quit', () => {
+      clearInterval(ticker);
+      sessions.flush();
+      db.close();
+    });
   } catch (error) {
     dialog.showErrorBox('Project: Ascend', `The database could not be opened.\n\n${String(error)}`);
     app.quit();
