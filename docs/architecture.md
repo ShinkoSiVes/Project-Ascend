@@ -68,6 +68,15 @@ A session is a state machine: `prep`, `focus`, `break`, `ended`.
 - **Break:** enforcement relaxes, achievement toasts can show, and Spotify stays available.
 - **Ended:** the stage result is computed from focused time against the quota, and the run engine applies the outcome.
 
+The state machine is a pure module in `src/shared/sessionEngine.ts`, with its types and rules in `src/shared/session.ts`:
+
+- **No clock inside.** Every function takes the current time as an argument and returns a new state, so it is tested without waiting. The state stores timestamps, and the remaining time is derived from the state and `now`.
+- **Catch-up.** `advance(state, now)` completes every phase that is already due, each at its own scheduled time. A laptop that slept for hours ends up exactly where the schedule says it should be.
+- **Rounds.** Defaults are 25 minutes of focus, 5 of break, and a 15 minute long break after every 4th round. The last round ends the session with no break after it.
+- **Pausing** depends on strictness: gentle is unlimited, medium allows 2 pauses of at most 5 minutes each (a longer pause ends by itself), and hard allows none. Paused time never counts as focus time.
+- **Abandoning** ends the session but keeps the focus time already done. Whether that fails a stage is decided by the run engine, not here.
+- **Saving.** The state is plain JSON, so it can be stored and restored at any moment.
+
 The session state is written to SQLite on every transition and about every 15 seconds while running.
 
 ### Session recovery
