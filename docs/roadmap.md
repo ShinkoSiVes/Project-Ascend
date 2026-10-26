@@ -6,8 +6,8 @@ Status values: `todo`, `in progress`, `done`.
 
 | # | Step | Status |
 |---|---|---|
-| 0 | Planning and documentation | in progress |
-| 1 | Scaffold, database and dashboard | todo |
+| 0 | Planning and documentation | done |
+| 1 | Scaffold, database and dashboard | in progress |
 | 2 | Pomodoro timer and to-do list | todo |
 | 3 | Pet, starters, XP and evolution | todo |
 | 4 | Stage generator, quotas and roguelike runs | todo |

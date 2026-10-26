@@ -23,7 +23,7 @@ Pick a starter pet, set a goal, and start a focus run. Each goal is a roguelike 
 
 ## Tech stack (planned)
 
-- Electron desktop app for Windows, JavaScript
+- Electron desktop app for Windows, written in TypeScript (built with electron-vite)
 - React renderer
 - Local SQLite storage
 - Companion Chrome extension (Manifest V3) that talks to the app over localhost
