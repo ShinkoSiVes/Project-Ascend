@@ -1,7 +1,9 @@
-import { app, shell, session, BrowserWindow } from 'electron';
+import { app, dialog, shell, session, BrowserWindow } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
+import { openDatabase } from './db/database';
+import { registerIpcHandlers } from './ipc';
 
 function createWindow(): void {
   // Create the browser window.
@@ -67,6 +69,17 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
+
+  // Open the database before any window exists, so the renderer never calls a missing handler.
+  try {
+    const db = openDatabase(join(app.getPath('userData'), 'ascend.db'));
+    registerIpcHandlers(db);
+    app.on('will-quit', () => db.close());
+  } catch (error) {
+    dialog.showErrorBox('Project: Ascend', `The database could not be opened.\n\n${String(error)}`);
+    app.quit();
+    return;
+  }
 
   createWindow();
 

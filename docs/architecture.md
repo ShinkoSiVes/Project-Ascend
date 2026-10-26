@@ -12,7 +12,7 @@ How Project: Ascend is built. Product behavior is described in the [overview](ov
 |  - active-window watcher  |                         +---------------------------+
 |  - idle detection         |
 |  - bridge server          |        HTTPS            +---------------------------+
-|  - SQLite (better-sqlite3)| <---------------------> |  Spotify Web API          |
+|  - SQLite (node:sqlite)   | <---------------------> |  Spotify Web API          |
 |  - Spotify client         |      OAuth (PKCE)       +---------------------------+
 +-------------+-------------+
               | IPC (contextBridge)
@@ -30,11 +30,15 @@ How Project: Ascend is built. Product behavior is described in the [overview](ov
 
 ## Data storage
 
-Local SQLite file in the app's user-data folder, accessed from the main process with `better-sqlite3`. Planned tables:
+Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the main process with Node's built-in `node:sqlite` module. Electron bundles Node 24, so there is no native module to rebuild or unpack. The module is still marked as a release candidate in Node 24, so all database access stays behind `src/main/db/` and can be swapped for another driver without touching the rest of the app.
+
+- **Migrations:** versioned SQL in `src/main/db/migrations.ts`, applied in order inside a transaction and tracked with SQLite's `user_version`. A shipped migration is never edited; changes go in a new one.
+- **Validation:** the renderer is untrusted, so the main process validates every input and the tables also carry `CHECK` constraints as a second line of defense.
+- **Tables:** `goals` and `settings` exist now; the rest are added by the step that needs them. Planned tables:
 
 | Table | Purpose |
 |---|---|
-| `goals` | Title, target hours, difficulty, strictness default, created date |
+| `goals` | Title, target hours, difficulty (1 to 5), strictness default, created date |
 | `todos` | Per-goal tasks: title, pomodoro estimate, status, order, completed date |
 | `runs` | One row per run: goal, seed, tier, current stage, status, cause of end |
 | `stages` | Generated stages of a run: type, biome, modifiers, quota, window, result |
@@ -123,6 +127,7 @@ The app is TypeScript, built with electron-vite. Folders marked (planned) do not
 ```
 src/main/        Electron main process: session, run engine, watcher, bridge, db, spotify
 src/preload/     Preload script: the typed window.api exposed to the renderer
+src/shared/      Types and limits shared by main, preload and renderer
 src/renderer/    React UI: dashboard, prep, session, stage map, pet, trophies
 extension/       (planned) Chrome extension: manifest.json, background script, blocked page
 content/         (planned) JSON data: species, perks, modifiers, achievements, events
@@ -131,6 +136,7 @@ docs/            Documentation
 
 ## Testing
 
+- Unit tests (Vitest, `npm test`) for migrations and goal validation, using in-memory databases.
 - Unit tests for the run engine (determinism, ramp, no-repeat rule, reset behavior) and the whitelist matcher.
 - Unit tests for the achievement engine against recorded event sequences.
 - Manual end-to-end check of the extension: pick open tabs, add a URL, start a session, confirm allowed links navigate and everything else is blocked at medium and hard.
