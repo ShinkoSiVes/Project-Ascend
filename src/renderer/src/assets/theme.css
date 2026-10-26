@@ -1,0 +1,83 @@
+/* The pixel font is bundled locally, so the app works fully offline. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('./fonts/PressStart2P-Regular.ttf') format('truetype');
+  font-display: block;
+}
+
+:root {
+  /* Dark arcade palette: a deep navy base with a few bright accents. */
+  --color-bg: #12142b;
+  --color-bg-raised: #1b1f3d;
+  --color-panel: #232850;
+  --color-line: #05060f;
+  --color-edge: #4a4fa0;
+  --color-ink: #f4f4ff;
+  --color-ink-dim: #9aa0d0;
+  --color-cyan: #4dd9ff;
+  --color-yellow: #ffd23f;
+  --color-magenta: #ff4d9d;
+  --color-green: #5be37d;
+  --color-red: #ff5a5a;
+  --color-purple: #8a6bff;
+
+  /* Every border, gap and notch is a multiple of one pixel unit. */
+  --pixel: 4px;
+  --font-pixel: 'Press Start 2P', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+ul {
+  list-style: none;
+}
+
+body {
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--color-ink);
+  background: var(--color-bg);
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.8;
+  text-rendering: optimizeSpeed;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Sprites and canvases must scale without smoothing. */
+img,
+canvas {
+  image-rendering: pixelated;
+}
+
+:focus-visible {
+  outline: var(--pixel) solid var(--color-yellow);
+  outline-offset: var(--pixel);
+}
+
+::selection {
+  background: var(--color-magenta);
+  color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
