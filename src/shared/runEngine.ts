@@ -3,8 +3,14 @@
 // makes every rule testable without waiting a day, and a run can be saved and restored at any
 // moment.
 
+import type { Strictness } from './goal';
 import {
+  DISTRACTION_HP_COST,
+  GENTLE_REVIVES,
   LIGHTER_QUOTA_FACTOR,
+  MAX_HP,
+  REVIVE_HP,
+  STAGE_HEAL_HP,
   XP_BOOST_PERCENT,
   checkRunInput,
   dayKey,
@@ -65,7 +71,10 @@ export function createRun(input: unknown, now: number): RunState {
     rerolls: 0,
     xpBoostPercent: 0,
     lighterNext: false,
-    perks: []
+    perks: [],
+    hp: MAX_HP,
+    revivesUsed: 0,
+    failReason: null
   };
 }
 
@@ -83,7 +92,7 @@ function settleStage(run: RunState): RunState {
     shields -= 1;
   } else {
     // A missed quota with no Shield left ends the run.
-    return { ...run, status: 'failed', endDay: lastDay, offers: null };
+    return { ...run, status: 'failed', failReason: 'quota', endDay: lastDay, offers: null };
   }
 
   const results = [...run.results, result];
@@ -134,7 +143,40 @@ function clearStage(run: RunState, today: string): RunState {
       offers: null
     };
   }
-  return { ...run, cleared: true, offers: offerPerks(run.seed, run.stageIndex, 0), redraws: 0 };
+  return {
+    ...run,
+    cleared: true,
+    // Clearing a stage heals the pet, up to full.
+    hp: Math.min(MAX_HP, run.hp + STAGE_HEAL_HP),
+    offers: offerPerks(run.seed, run.stageIndex, 0),
+    redraws: 0
+  };
+}
+
+// A blocked app was in front for longer than the grace period. It costs HP. At 0 HP a Gentle run
+// is revived once, and any other run fails. Strictness belongs to the quest, so the caller passes it.
+export function loseHp(run: RunState, strictness: Strictness, now: number): RunState {
+  const current = advanceRun(run, now);
+
+  if (current.status !== 'active') {
+    return current;
+  }
+
+  const hp = Math.max(0, current.hp - DISTRACTION_HP_COST);
+  if (hp > 0) {
+    return { ...current, hp };
+  }
+  if (strictness === 'gentle' && current.revivesUsed < GENTLE_REVIVES) {
+    return { ...current, hp: REVIVE_HP, revivesUsed: current.revivesUsed + 1 };
+  }
+  return {
+    ...current,
+    hp: 0,
+    status: 'failed',
+    failReason: 'hp',
+    endDay: dayKey(now),
+    offers: null
+  };
 }
 
 // Counts focus time toward today's stage, if it is for the run's quest. Reaching the quota

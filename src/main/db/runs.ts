@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  MAX_HP,
   PERK_IDS,
   stageReached,
   stagesCleared,
@@ -75,8 +76,28 @@ function isRunState(value: unknown): value is RunState {
     isWholeNumber(run.rerolls, 0) &&
     isWholeNumber(run.xpBoostPercent, 0) &&
     typeof run.lighterNext === 'boolean' &&
-    isPerkList(run.perks)
+    isPerkList(run.perks) &&
+    isWholeNumber(run.hp, 0) &&
+    (run.hp as number) <= MAX_HP &&
+    isWholeNumber(run.revivesUsed, 0) &&
+    (run.failReason === null || run.failReason === 'quota' || run.failReason === 'hp')
   );
+}
+
+// A run saved before HP existed has no HP fields. Give it full HP and no failure reason, so an
+// update never throws away a run that was in progress. A failed run keeps the reason it must have
+// had: HP did not exist, so its quota was missed.
+function withHpDefaults(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+  const run = value as Record<string, unknown>;
+  return {
+    ...run,
+    hp: run.hp ?? MAX_HP,
+    revivesUsed: run.revivesUsed ?? 0,
+    failReason: run.failReason ?? (run.status === 'failed' ? 'quota' : null)
+  };
 }
 
 // A run that has failed or been won waits to be read. One that is active, or that the person
@@ -127,7 +148,7 @@ export function saveRun(db: DatabaseSync, id: number, state: RunState): void {
 
 // Reads a row's state, closing the row if it is damaged so it cannot block new runs.
 function readState(db: DatabaseSync, row: { id: number; state: string }): StoredRun | null {
-  const parsed = parseJson(row.state);
+  const parsed = withHpDefaults(parseJson(row.state));
   if (!isRunState(parsed)) {
     db.prepare("UPDATE runs SET status = 'abandoned', seen = 1 WHERE id = ?").run(row.id);
     return null;

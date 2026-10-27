@@ -196,7 +196,12 @@ describe('damaged rows', () => {
     ['a malformed start day', () => JSON.stringify({ ...good(), startDay: 'yesterday' })],
     ['an unknown perk', () => JSON.stringify({ ...good(), perks: ['cheat'] })],
     ['a bad offer', () => JSON.stringify({ ...good(), offers: ['shield', 'nope', 'reroll'] })],
-    ['a bad result', () => JSON.stringify({ ...good(), results: ['won'] })]
+    ['a bad result', () => JSON.stringify({ ...good(), results: ['won'] })],
+    ['HP above the maximum', () => JSON.stringify({ ...good(), hp: 101 })],
+    ['negative HP', () => JSON.stringify({ ...good(), hp: -1 })],
+    ['a fractional HP', () => JSON.stringify({ ...good(), hp: 50.5 })],
+    ['a bad revive count', () => JSON.stringify({ ...good(), revivesUsed: -1 })],
+    ['an unknown fail reason', () => JSON.stringify({ ...good(), failReason: 'boredom' })]
   ];
 
   it.each(broken)(
@@ -210,6 +215,35 @@ describe('damaged rows', () => {
       expect(() => insertRun(db, newRun())).not.toThrow();
     }
   );
+
+  // A run saved before HP existed has none of the three HP fields.
+  function withoutHpFields(run: RunState): string {
+    const old: Record<string, unknown> = { ...run };
+    delete old.hp;
+    delete old.revivesUsed;
+    delete old.failReason;
+    return JSON.stringify(old);
+  }
+
+  it('loads a run saved before HP existed, at full HP', () => {
+    const run = newRun({ stageIndex: 2 });
+    const id = insertRaw(withoutHpFields(run));
+
+    expect(loadActiveRun(db)).toEqual({ id, state: run });
+    expect(rawStatus(id).status).toBe('active');
+  });
+
+  it('gives a failed run from before HP the reason it must have had', () => {
+    const failed: RunState = {
+      ...newRun(),
+      status: 'failed',
+      failReason: 'quota',
+      endDay: '2026-10-27'
+    };
+    const id = insertRaw(withoutHpFields(failed), 'failed', 0);
+
+    expect(loadPendingResult(db)).toEqual({ id, state: failed });
+  });
 
   it('closes a damaged unread result instead of showing it', () => {
     const id = insertRaw('garbage', 'failed', 0);
