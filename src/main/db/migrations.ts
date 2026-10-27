@@ -113,6 +113,17 @@ export const migrations: Migration[] = [
       -- with status 'active' collides with the first.
       CREATE UNIQUE INDEX idx_runs_one_active ON runs ((1)) WHERE status = 'active';
     `
+  },
+  {
+    version: 6,
+    sql: `
+      -- How many times each blocked app became a distraction. Only the app's name and a count are
+      -- kept, never window titles and never when it happened.
+      CREATE TABLE distraction_counts (
+        app TEXT PRIMARY KEY CHECK (length(app) BETWEEN 1 AND 100),
+        count INTEGER NOT NULL DEFAULT 0 CHECK (count >= 0)
+      );
+    `
   }
 ];
 

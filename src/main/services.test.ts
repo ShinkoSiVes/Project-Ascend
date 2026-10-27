@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MS_PER_MINUTE } from '../shared/session';
 import { openDatabase } from './db/database';
+import { listDistractionCounts } from './db/distractions';
 import { createGoal } from './db/goals';
 import { createServices, recoverServices, type Services } from './services';
 
@@ -15,13 +16,41 @@ let goalId: number;
 let time: number;
 let messages: string[];
 let services: Services;
+// The app in front, as the reader would report it.
+let front: string | null;
 
 function build(): Services {
   return createServices(db, {
     now: () => time,
     random: () => 0.5,
-    broadcast: (channel) => messages.push(channel)
+    broadcast: (channel) => messages.push(channel),
+    foregroundApp: () => front
   });
+}
+
+// A focus session that is running, for a quest, with the given strictness.
+function startFocus(forGoal: number, strictness: 'gentle' | 'medium' | 'hard'): void {
+  services.sessions.create({
+    goalId: forGoal,
+    todoId: null,
+    config: {
+      focusMinutes: 25,
+      breakMinutes: 5,
+      longBreakMinutes: 15,
+      longBreakEvery: 4,
+      rounds: 1,
+      strictness
+    }
+  });
+  services.sessions.start();
+}
+
+// Looks at the front app once a second for the given number of seconds, as the ticker does.
+function watchFor(seconds: number): void {
+  for (let i = 0; i <= seconds; i++) {
+    services.watcher.tick();
+    time += 1000;
+  }
 }
 
 // A session for a quest with one round of the given length, run to its natural end.
@@ -58,6 +87,7 @@ beforeEach(() => {
   }).id;
   time = at(0);
   messages = [];
+  front = null;
   services = build();
   services.pets.choose({ species: 'ember', name: 'Bean' });
 });
@@ -106,6 +136,114 @@ describe('a finished session', () => {
     runSession(goalId, 30);
 
     expect(new Set(messages)).toEqual(new Set(['session:changed', 'pet:changed', 'run:changed']));
+  });
+});
+
+describe('a distraction', () => {
+  it('costs the run HP and is counted, after the grace period', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'medium');
+    front = 'Discord.exe';
+
+    watchFor(9);
+    expect(services.runs.current()?.hp).toBe(100);
+
+    watchFor(2);
+    expect(services.runs.current()?.hp).toBe(90);
+    expect(listDistractionCounts(db)).toEqual([{ app: 'discord', count: 1 }]);
+  });
+
+  it('costs HP once for one long stretch', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'medium');
+    front = 'discord';
+
+    watchFor(120);
+
+    expect(services.runs.current()?.hp).toBe(90);
+    expect(listDistractionCounts(db)).toEqual([{ app: 'discord', count: 1 }]);
+  });
+
+  it('is counted but costs no HP when there is no run', () => {
+    startFocus(goalId, 'medium');
+    front = 'steam';
+
+    watchFor(11);
+
+    expect(services.runs.current()).toBeNull();
+    expect(listDistractionCounts(db)).toEqual([{ app: 'steam', count: 1 }]);
+  });
+
+  it('is counted but costs the run no HP when the session is for another quest', () => {
+    const other = createGoal(db, {
+      title: 'Other',
+      targetHours: 5,
+      difficulty: 1,
+      strictness: 'gentle'
+    });
+    services.runs.start({ goalId });
+    startFocus(other.id, 'medium');
+    front = 'discord';
+
+    watchFor(11);
+
+    expect(services.runs.current()?.hp).toBe(100);
+    expect(listDistractionCounts(db)).toEqual([{ app: 'discord', count: 1 }]);
+  });
+
+  it('is not seen when the app in front is not on the blocklist', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'medium');
+    front = 'code';
+
+    watchFor(60);
+
+    expect(services.runs.current()?.hp).toBe(100);
+    expect(listDistractionCounts(db)).toEqual([]);
+  });
+
+  it('is not seen when no session is running', () => {
+    services.runs.start({ goalId });
+    front = 'discord';
+
+    watchFor(60);
+
+    expect(services.runs.current()?.hp).toBe(100);
+    expect(listDistractionCounts(db)).toEqual([]);
+  });
+
+  it('is not seen while the focus clock is paused', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'gentle');
+    services.sessions.pause();
+    front = 'discord';
+
+    watchFor(60);
+
+    expect(services.runs.current()?.hp).toBe(100);
+  });
+
+  it('fails the run at 0 HP when the session is on medium', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'medium');
+    db.prepare("UPDATE runs SET state = json_set(state, '$.hp', 10)").run();
+    services.runs.load();
+    front = 'discord';
+
+    watchFor(11);
+
+    expect(services.runs.current()).toMatchObject({ status: 'failed', failReason: 'hp' });
+  });
+
+  it('tells the windows about the new HP', () => {
+    services.runs.start({ goalId });
+    startFocus(goalId, 'medium');
+    front = 'discord';
+    messages = [];
+
+    watchFor(11);
+
+    expect(messages).toContain('run:changed');
   });
 });
 

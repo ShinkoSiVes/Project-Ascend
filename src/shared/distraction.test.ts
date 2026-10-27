@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   BLOCKLIST_PRESETS,
   IDLE_WATCH,
+  MAX_APP_NAME_LENGTH,
+  MAX_BLOCKLIST_ENTRIES,
+  checkBlocklist,
+  defaultBlocklist,
   isBlocked,
   isFocusRunning,
   normalizeApp,
+  normalizeBlocklist,
   watchForeground,
   type WatchState
 } from './distraction';
@@ -84,6 +89,52 @@ describe('normalizeApp and isBlocked', () => {
     expect(isBlocked(null, blocklist)).toBe(false);
     expect(isBlocked('', ['', ' '])).toBe(false);
     expect(isBlocked('discord', [])).toBe(false);
+  });
+});
+
+describe('the blocklist', () => {
+  it('starts with every preset switched on', () => {
+    const list = defaultBlocklist();
+
+    for (const apps of Object.values(BLOCKLIST_PRESETS)) {
+      expect(list).toEqual(expect.arrayContaining([...apps]));
+    }
+    expect(list).toHaveLength(Object.values(BLOCKLIST_PRESETS).flat().length);
+  });
+
+  it('hands out a new list each time, so editing one cannot change the next', () => {
+    const list = defaultBlocklist();
+    list.push('extra');
+
+    expect(defaultBlocklist()).not.toContain('extra');
+  });
+
+  it('cleans a list: plain names, no blanks, no repeats, order kept', () => {
+    expect(normalizeBlocklist(['Discord.exe', ' ', 'steam', 'DISCORD', '', 'Steam.EXE'])).toEqual([
+      'discord',
+      'steam'
+    ]);
+  });
+
+  it.each([
+    ['a list of names', ['discord', 'steam']],
+    ['an empty list', []],
+    ['a list at the size limit', Array.from({ length: MAX_BLOCKLIST_ENTRIES }, (_, i) => `a${i}`)],
+    ['a name at the length limit', ['a'.repeat(MAX_APP_NAME_LENGTH)]]
+  ])('accepts %s', (_name, input) => {
+    expect(checkBlocklist(input)).toBeNull();
+  });
+
+  it.each([
+    ['text', 'discord'],
+    ['null', null],
+    ['an object', { discord: true }],
+    ['a list with a number in it', ['discord', 7]],
+    ['a list with null in it', [null]],
+    ['a list over the size limit', Array.from({ length: MAX_BLOCKLIST_ENTRIES + 1 }, () => 'a')],
+    ['a name over the length limit', ['a'.repeat(MAX_APP_NAME_LENGTH + 1)]]
+  ])('refuses %s', (_name, input) => {
+    expect(checkBlocklist(input)).toEqual(expect.any(String));
   });
 });
 

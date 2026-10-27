@@ -43,6 +43,7 @@ Local SQLite file (`ascend.db`) in the app's user-data folder, accessed from the
 | `runs` | One row per run: goal, seed, tier, current stage, status, cause of end |
 | `stages` | Generated stages of a run: type, biome, modifiers, quota, window, result |
 | `sessions` | Focus sessions: goal, active to-do, the engine state as JSON, phase, focused time, end reason, last seen. Stage and distraction counts are added later. |
+| `distraction_counts` | How many times each blocked app became a distraction: the app's plain name and a count. Nothing else is kept, never window titles and never when it happened |
 | `pets` | The chosen pet: species, name, chosen date. One row only; evolution branches and run level come later |
 | `xp_events` | Every XP payout: source (session or task), reference id, amount, date. The pet's XP is the sum |
 | `dex` | Collected species and variants |
@@ -114,6 +115,7 @@ The run rules are pure data and functions in `src/shared/run.ts` (stages, quotas
 - **The map is generated once.** `generateStages` turns a seed, the quest's target hours and its difficulty into the stages, using a small seeded random generator (`mulberry32`). The result is stored in the run, so a later balance change cannot alter a run in progress.
 - **Settling days.** `advanceRun(run, now)` settles every stage whose day has passed, in order: a cleared stage moves on, an uncleared one spends a Shield or fails the run. A run that was not opened for days ends up exactly where the calendar says, the same way the session engine catches up after a sleep.
 - **Focus.** `recordFocus` counts a finished session's focus time toward today's stage, but only for the run's quest. Reaching the quota clears the stage and offers 3 perks. Clearing the last stage wins the run.
+- **Hit points.** `loseHp(run, strictness, now)` takes 10 HP for a distraction. Strictness belongs to the quest, so the caller passes it. At 0 HP a Gentle run is revived once at 50 HP (`revivesUsed`), and any other run fails with `failReason: 'hp'`. A missed quota fails with `failReason: 'quota'`. Clearing a stage heals 10, capped at 100. Runs saved before HP existed get full HP and no revives used when they are loaded (`withHpDefaults` in `src/main/db/runs.ts`), so an update never abandons a run in progress.
 - **Perks.** Offers are drawn with a seed made from the run, the stage and the redraw count, so an offer can be replayed. An unpicked offer expires at midnight.
 - **Time.** The state stores no timers. It is plain JSON, so it can be saved and restored at any moment.
 
@@ -131,7 +133,10 @@ The run rules are pure data and functions in `src/shared/run.ts` (stages, quotas
 
 ## Focus enforcement
 
-- **Active window:** the main process polls the foreground window (planned library: `active-win`) and matches the process name and window title against the allowed and blocked app lists.
+- **Distractions:** the rules are pure, in `src/shared/distraction.ts`. A blocked app that stays in front for 10 seconds while the focus clock is running (not in a break, not paused, not away) is a distraction, counted once per stretch. Switching away and back, or moving to another blocked app, starts a new stretch. App names are compared whole, ignoring case and a trailing `.exe`.
+- **The blocklist** is saved as JSON in the `settings` table and starts as every preset (games, chat, social). A damaged saved value falls back to that default list. At most 200 names of up to 100 characters each.
+- **The watcher** (`src/main/distraction/`) is ticked once a second with the session. It reads the front app only while a focus round is running, so nothing is looked at outside a session. A distraction adds one to that app's count and calls `RunManager.loseHp` with the session's strictness. HP only goes if the session is for the run's quest, so with no run, or another quest's session, the distraction is only counted.
+- **Reading the front app:** the main process reads only the process name of the foreground window, never its title. The reader is passed into `createServices` as `foregroundApp`; left out, no distraction is ever seen. The reader itself (one long-lived PowerShell process, no extra npm dependency) arrives in the next pull request.
 - **Idle detection:** Electron's `powerMonitor.getSystemIdleTime()` pauses the quota clock after a configurable idle time.
 - **Lock screen:** during focus the app shows an always-on-top overlay window with the timer, pet and active to-do. Leaving it triggers the strictness rule.
 - **Responses by strictness:**
