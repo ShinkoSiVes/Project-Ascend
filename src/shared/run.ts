@@ -32,6 +32,16 @@ export const REST_SPACING = 6;
 export const PERKS_OFFERED = 3;
 export const XP_BOOST_PERCENT = 25;
 
+// Hit points. A run starts at full HP, a distraction costs some, and clearing a stage heals some.
+export const MAX_HP = 100;
+export const DISTRACTION_HP_COST = 10;
+export const STAGE_HEAL_HP = 10;
+// A distraction only counts once the blocked app has been in front for this long.
+export const DISTRACTION_GRACE_SECONDS = 10;
+// Gentle gets this many revives per run, and each one brings the pet back to this much HP.
+export const GENTLE_REVIVES = 1;
+export const REVIVE_HP = 50;
+
 // ---- Seeded randomness, so the same seed always builds the same run.
 
 // A small, fast random number generator. It returns numbers from 0 up to (not including) 1.
@@ -178,6 +188,8 @@ export function offerPerks(seed: number, stageIndex: number, redraw: number): Pe
 
 export type RunStatus = 'active' | 'failed' | 'completed' | 'abandoned';
 export type StageResult = 'cleared' | 'forgiven';
+// Why a run failed: a missed quota, or running out of HP.
+export type FailReason = 'quota' | 'hp';
 
 export interface RunState {
   goalId: number;
@@ -210,6 +222,12 @@ export interface RunState {
   lighterNext: boolean;
   // The perks picked so far, in order.
   perks: PerkId[];
+  // Hit points left, from 0 to MAX_HP. Distractions take them away, cleared stages give some back.
+  hp: number;
+  // How many revives this run has used. Only Gentle can be revived.
+  revivesUsed: number;
+  // Why the run failed, or null while it is not failed.
+  failReason: FailReason | null;
 }
 
 export function stageDay(run: RunState, stageIndex: number): string {

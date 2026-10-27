@@ -106,6 +106,7 @@ Split into three pull requests.
 - Achievement book and event-based achievement engine, with break-time toasts.
 - Loot drops, eggs and the pet dex.
 - Streaks with freeze tokens, daily quests and the weekly boss.
+- Biomes: each biome gives the stage map and the pet's surroundings its own look. The animated backgrounds are built in step 8.
 - Ascension tiers, daily seed challenge and shareable seeds.
 - Unlock tree and the daily focus cap with a rest reminder.
 
@@ -114,6 +115,8 @@ Split into three pull requests.
 ## 8. Sound, animation and polish
 
 - Chiptune-style sound effects with ducking over Spotify.
+- Moving pet sprites: an idle animation (bounce and blink) for every species and stage, drawn in code, with a different motion per mood. Animation stops when reduced motion is on.
+- A background that changes during focus mode (for example by time of day or by stage), kept in the 8-bit style and calm enough not to distract.
 - Pet mood animations and stage transitions.
 - Accessibility and settings pass.
 

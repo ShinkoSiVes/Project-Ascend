@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DISTRACTION_HP_COST,
   LIGHTER_QUOTA_FACTOR,
+  MAX_HP,
   PERK_IDS,
   PERKS_OFFERED,
+  REVIVE_HP,
+  STAGE_HEAL_HP,
   generateStages,
   offerPerks,
   roundUpQuota,
@@ -16,6 +20,7 @@ import {
   abandonRun,
   advanceRun,
   createRun,
+  loseHp,
   pickPerk,
   recordFocus,
   rerollOffers
@@ -74,7 +79,10 @@ describe('createRun', () => {
       rerolls: 0,
       xpBoostPercent: 0,
       lighterNext: false,
-      perks: []
+      perks: [],
+      hp: 100,
+      revivesUsed: 0,
+      failReason: null
     });
     expect(run.quotaMinutes).toBe(run.stages[0].quotaMinutes);
   });
@@ -221,6 +229,7 @@ describe('advanceRun', () => {
 
     expect(failed).toMatchObject({
       status: 'failed',
+      failReason: 'quota',
       endDay: '2026-10-27',
       stageIndex: 1,
       results: []
@@ -467,6 +476,78 @@ describe('rerollOffers', () => {
     const cleared = { ...clearToday(fresh(), 0), rerolls: 1 };
 
     expect(advanceRun(cleared, d(1)).rerolls).toBe(1);
+  });
+});
+
+describe('loseHp', () => {
+  it('takes the cost of a distraction and nothing else', () => {
+    const run = loseHp(fresh(), 'medium', d(0));
+
+    expect(run.hp).toBe(100 - DISTRACTION_HP_COST);
+    expect(run).toEqual({ ...fresh(), hp: 100 - DISTRACTION_HP_COST });
+  });
+
+  it('ends the run at 0 HP on medium and hard, and says why', () => {
+    for (const strictness of ['medium', 'hard'] as const) {
+      const failed = loseHp({ ...fresh(), hp: DISTRACTION_HP_COST }, strictness, d(0, 15));
+
+      expect(failed).toMatchObject({
+        hp: 0,
+        status: 'failed',
+        failReason: 'hp',
+        endDay: '2026-10-27',
+        offers: null
+      });
+    }
+  });
+
+  it('revives a gentle run once, at half HP', () => {
+    const revived = loseHp({ ...fresh(), hp: DISTRACTION_HP_COST }, 'gentle', d(0));
+
+    expect(revived).toMatchObject({
+      hp: REVIVE_HP,
+      revivesUsed: 1,
+      status: 'active',
+      failReason: null
+    });
+  });
+
+  it('lets a gentle run fail once the revive is used', () => {
+    const used = { ...fresh(), hp: DISTRACTION_HP_COST, revivesUsed: 1 };
+
+    expect(loseHp(used, 'gentle', d(0))).toMatchObject({ status: 'failed', failReason: 'hp' });
+  });
+
+  it('never lets HP go below 0', () => {
+    expect(loseHp({ ...fresh(), hp: 3 }, 'hard', d(0)).hp).toBe(0);
+  });
+
+  it('leaves a run that is already over alone', () => {
+    const over = abandonRun(fresh(), d(0));
+
+    expect(loseHp(over, 'hard', d(0, 12))).toEqual(over);
+  });
+
+  it('settles missed days first, so a late distraction cannot hit a failed run', () => {
+    const run = loseHp(fresh(), 'hard', d(2));
+
+    expect(run).toMatchObject({ status: 'failed', failReason: 'quota', hp: 100 });
+  });
+});
+
+describe('healing', () => {
+  it('heals when a stage is cleared, up to full HP', () => {
+    const hurt = { ...fresh(), hp: 50 };
+    const nearlyFull = { ...fresh(), hp: 95 };
+
+    expect(clearToday(hurt, 0).hp).toBe(50 + STAGE_HEAL_HP);
+    expect(clearToday(nearlyFull, 0).hp).toBe(MAX_HP);
+  });
+
+  it('keeps HP across stages', () => {
+    const hurt = clearToday({ ...fresh(), hp: 40 }, 0);
+
+    expect(advanceRun(hurt, d(1, 0)).hp).toBe(40 + STAGE_HEAL_HP);
   });
 });
 

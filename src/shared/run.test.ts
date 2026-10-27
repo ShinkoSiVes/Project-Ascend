@@ -361,7 +361,10 @@ describe('run helpers', () => {
     rerolls: 0,
     xpBoostPercent: 50,
     lighterNext: false,
-    perks: []
+    perks: [],
+    hp: 100,
+    revivesUsed: 0,
+    failReason: null
   };
 
   it('puts each stage on its own day, one after another', () => {
