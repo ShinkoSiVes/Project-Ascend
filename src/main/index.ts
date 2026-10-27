@@ -1,8 +1,9 @@
-import { app, dialog, shell, session, BrowserWindow } from 'electron';
+import { app, dialog, powerMonitor, shell, session, BrowserWindow } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { openDatabase } from './db/database';
+import { getAwayAfterSeconds } from './db/settings';
 import { registerIpcHandlers } from './ipc';
 import { createServices, recoverServices } from './services';
 
@@ -86,7 +87,13 @@ app.whenReady().then(() => {
 
     // The session, the pet and the run, connected: a finished session pays the pet and counts
     // toward the run, and the windows hear about every change.
-    const services = createServices(db, { broadcast });
+    const services = createServices(db, {
+      broadcast,
+      // The time since the keyboard or mouse was last used. It is read from the system only on
+      // this machine, and nothing about what was typed or clicked is ever seen.
+      idleMs: () => powerMonitor.getSystemIdleTime() * 1000,
+      awayAfterMs: () => getAwayAfterSeconds(db) * 1000
+    });
     const { sessions, runs } = services;
 
     // A session left unfinished by a crash or a quit is closed, and days that passed while the app

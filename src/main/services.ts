@@ -16,6 +16,10 @@ export interface ServiceOptions {
   random?: () => number;
   // Sends a message to the open windows. Does nothing when left out.
   broadcast?: (channel: string, payload: unknown) => void;
+  // How many milliseconds ago the keyboard or mouse was last used. Left out, nobody is ever away.
+  idleMs?: () => number;
+  // After how many milliseconds without input the person counts as away.
+  awayAfterMs?: () => number;
 }
 
 // Builds the three services and connects them: when a session ends, it pays the pet and counts
@@ -31,18 +35,19 @@ export function createServices(db: DatabaseSync, options: ServiceOptions = {}): 
     onChange: (state) => broadcast('run:changed', state)
   });
 
-  const sessions = new SessionManager(
-    db,
+  const sessions = new SessionManager(db, {
     now,
-    (state) => broadcast('session:changed', state),
-    (id, state) => {
+    idleMs: options.idleMs,
+    awayAfterMs: options.awayAfterMs,
+    onChange: (state) => broadcast('session:changed', state),
+    onEnded: (id, state) => {
       // The run's XP boost is worked out first, as it stood when the session ended. That way a
       // perk picked because of this very session cannot raise its own pay.
       const endedAt = state.endedAt ?? now();
       pets.awardSession(id, state, runs.xpMultiplierFor(state.goalId, endedAt));
       runs.recordSession(state);
     }
-  );
+  });
 
   return { pets, runs, sessions };
 }

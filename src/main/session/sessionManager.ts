@@ -1,11 +1,13 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { isValidId } from '../../shared/todo';
-import type { SessionState } from '../../shared/session';
+import { AWAY_AFTER_SECONDS, type SessionState } from '../../shared/session';
 import {
   SessionError,
   abandonSession,
   advance,
+  comeBack,
   createSession,
+  goAway,
   pauseSession,
   resumeSession,
   startSession
@@ -20,9 +22,22 @@ interface ActiveSession {
   state: SessionState;
 }
 
+export interface SessionManagerOptions {
+  // The clock, replaced in tests so they do not have to wait.
+  now?: () => number;
+  // Hears every new state.
+  onChange?: (state: SessionState) => void;
+  // Hears each session once, when it has ended, with its saved id, so the caller can pay out XP.
+  onEnded?: (id: number, state: SessionState) => void;
+  // How many milliseconds ago the keyboard or mouse was last used. Left out, nobody is ever away.
+  idleMs?: () => number;
+  // After how many milliseconds without input the person counts as away.
+  awayAfterMs?: () => number;
+}
+
 // Owns the one unfinished session. It applies the pure engine to the saved state, saves every
-// change, and tells the listener whenever the state changes. The clock is passed in so tests
-// do not have to wait.
+// change, and tells the listener whenever the state changes. The clock and the idle time are
+// passed in so tests do not have to wait.
 export class SessionManager {
   private active: ActiveSession | null = null;
   private lastSavedAt = 0;
@@ -30,19 +45,16 @@ export class SessionManager {
   private readonly now: () => number;
   private readonly onChange: (state: SessionState) => void;
   private readonly onEnded: (id: number, state: SessionState) => void;
+  private readonly idleMs: () => number;
+  private readonly awayAfterMs: () => number;
 
-  // onChange hears every new state. onEnded hears each session once, when it has ended, with
-  // its saved id, so the caller can pay out XP.
-  constructor(
-    db: DatabaseSync,
-    now: () => number = Date.now,
-    onChange: (state: SessionState) => void = () => {},
-    onEnded: (id: number, state: SessionState) => void = () => {}
-  ) {
+  constructor(db: DatabaseSync, options: SessionManagerOptions = {}) {
     this.db = db;
-    this.now = now;
-    this.onChange = onChange;
-    this.onEnded = onEnded;
+    this.now = options.now ?? Date.now;
+    this.onChange = options.onChange ?? (() => {});
+    this.onEnded = options.onEnded ?? (() => {});
+    this.idleMs = options.idleMs ?? (() => 0);
+    this.awayAfterMs = options.awayAfterMs ?? (() => AWAY_AFTER_SECONDS * 1000);
   }
 
   // Runs once at startup. A session left unfinished means the app was closed or crashed, and
@@ -97,15 +109,18 @@ export class SessionManager {
     return this.apply(abandonSession);
   }
 
-  // Called about once a second. It moves the session on when a phase is due and saves a
-  // heartbeat now and then, so a crash loses at most a few seconds of focus time.
+  // Called about once a second. It stops the clock when nobody has touched the keyboard or
+  // mouse for a while, starts it again on input, moves the session on when a phase is due, and
+  // saves a heartbeat now and then, so a crash loses at most a few seconds of focus time.
   tick(): void {
     if (!this.active) {
       return;
     }
 
     const now = this.now();
-    const next = advance(this.active.state, now);
+    // Being away is settled first. If the time was settled first, a round that came due while
+    // the person was away would be completed for them.
+    const next = advance(this.applyAway(this.active.state, now), now);
 
     if (next !== this.active.state) {
       this.commit({ id: this.active.id, state: next }, now);
@@ -113,6 +128,18 @@ export class SessionManager {
       touchSession(this.db, this.active.id, now);
       this.lastSavedAt = now;
     }
+  }
+
+  // Stops the focus clock once there has been no input for long enough, as of the moment the
+  // input stopped, and starts it again as soon as there is input.
+  private applyAway(state: SessionState, now: number): SessionState {
+    const idle = this.idleMs();
+    const away = idle >= this.awayAfterMs();
+
+    if (state.awaySince !== null) {
+      return away ? state : comeBack(state, now);
+    }
+    return away ? goAway(state, now - idle, now) : state;
   }
 
   // Called when the app is about to quit: brings the session up to date and records that it

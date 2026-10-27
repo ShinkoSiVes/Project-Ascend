@@ -75,10 +75,13 @@ The state machine is a pure module in `src/shared/sessionEngine.ts`, with its ty
 - **Catch-up.** `advance(state, now)` completes every phase that is already due, each at its own scheduled time. A laptop that slept for hours ends up exactly where the schedule says it should be.
 - **Rounds.** Defaults are 25 minutes of focus, 5 of break, and a 15 minute long break after every 4th round. The last round ends the session with no break after it.
 - **Pausing** depends on strictness: gentle is unlimited, medium allows 2 pauses of at most 5 minutes each (a longer pause ends by itself), and hard allows none. Paused time never counts as focus time.
+- **Being away.** After 5 minutes (a setting, 30 seconds to 30 minutes) with no keyboard or mouse input, the focus clock stops, as of the moment the input stopped, so the idle minutes never count as focus. It does not use up a pause, it only applies to a running focus round, and it starts again on the next input. The time away is added up and shown. The idle time comes from Electron's `powerMonitor.getSystemIdleTime()`: only how long ago the last input was, never what was typed or clicked. The manager settles being away before settling due phases, so a round that came due while the person was away is not completed for them. Up to the threshold of idle time at a round boundary can still count as focus, which is the slack the five minutes allow.
 - **Abandoning** ends the session but keeps the focus time already done. Whether that fails a stage is decided by the run engine, not here.
 - **Saving.** The state is plain JSON, so it can be stored and restored at any moment.
 
 The session state is written to SQLite on every transition, and a heartbeat ("last seen") is written every 15 seconds while a session is open and once more when the app quits.
+
+A session saved before the away fields existed is loaded with plain defaults, so an update never closes a session that was in the middle of running.
 
 The main process owns the one unfinished session in `SessionManager` (`src/main/session/`). It applies the pure engine to the saved state, saves every change, and pushes each new state to the window, which derives the countdown from it. A ticker calls `tick()` once a second. A unique index on `sessions` allows at most one unfinished session, and a damaged row is closed instead of blocking new sessions.
 

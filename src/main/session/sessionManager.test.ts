@@ -20,14 +20,17 @@ let db: DatabaseSync;
 let goalId: number;
 let time: number;
 let changes: SessionState[];
+// How long ago the keyboard or mouse was last used, in milliseconds. Tests set it by hand.
+let idle: number;
 
-// A manager whose clock is the `time` variable and whose changes are collected in `changes`.
+// A manager whose clock is the `time` variable, whose idle time is the `idle` variable, and whose
+// changes are collected in `changes`.
 function newManager(): SessionManager {
-  return new SessionManager(
-    db,
-    () => time,
-    (state) => changes.push(state)
-  );
+  return new SessionManager(db, {
+    now: () => time,
+    idleMs: () => idle,
+    onChange: (state) => changes.push(state)
+  });
 }
 
 function input(overrides: Partial<SessionConfig> = {}, todoId: number | null = null): unknown {
@@ -50,6 +53,7 @@ beforeEach(() => {
   }).id;
   time = T0;
   changes = [];
+  idle = 0;
 });
 
 describe('create and start', () => {
@@ -325,6 +329,191 @@ describe('recover after the app was closed', () => {
   });
 });
 
+describe('being away from the keyboard', () => {
+  const FIVE_MIN = 5 * MIN;
+
+  // A session that has been running for the given number of minutes.
+  function runningFor(minutes: number, overrides: Partial<SessionConfig> = {}): SessionManager {
+    const manager = newManager();
+    manager.create(input(overrides));
+    manager.start();
+    time = T0 + minutes * MIN;
+    return manager;
+  }
+
+  it('stops the clock once there has been no input for five minutes, as of the last input', () => {
+    const manager = runningFor(12);
+    changes = [];
+
+    // The last input was 5 minutes ago, at minute 7.
+    idle = FIVE_MIN;
+    manager.tick();
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({ awaySince: T0 + 7 * MIN, segmentStartedAt: null });
+    expect(manager.current()).toMatchObject({ awaySince: T0 + 7 * MIN });
+    expect(loadActiveSession(db)?.state.awaySince).toBe(T0 + 7 * MIN);
+  });
+
+  it('does nothing while the idle time is below the threshold', () => {
+    const manager = runningFor(12);
+    changes = [];
+
+    idle = FIVE_MIN - 1;
+    manager.tick();
+
+    expect(changes).toEqual([]);
+  });
+
+  it('starts the clock again on the next input, and counts the time away', () => {
+    const manager = runningFor(12);
+    idle = FIVE_MIN;
+    manager.tick();
+
+    time = T0 + 20 * MIN;
+    idle = 0;
+    manager.tick();
+
+    expect(manager.current()).toMatchObject({
+      awaySince: null,
+      awayMs: 13 * MIN,
+      segmentStartedAt: T0 + 20 * MIN
+    });
+  });
+
+  it('does not count the idle minutes as focus, so the round ends later', () => {
+    // A 25 minute round, with the last input at minute 7 and the next one at minute 20.
+    const manager = runningFor(12);
+    idle = FIVE_MIN;
+    manager.tick();
+    time = T0 + 20 * MIN;
+    idle = 0;
+    manager.tick();
+
+    // 7 minutes were focused, so 18 are left and the round ends at minute 38.
+    time = T0 + 37 * MIN;
+    manager.tick();
+    expect(manager.current()?.phase).toBe('focus');
+    time = T0 + 38 * MIN;
+    manager.tick();
+    expect(manager.current()?.phase).toBe('break');
+  });
+
+  it('does not complete a round that came due while the person was away', () => {
+    const manager = runningFor(24);
+
+    // The round is due at minute 25, but there has been no input since minute 23.
+    time = T0 + 40 * MIN;
+    idle = 17 * MIN;
+    manager.tick();
+
+    expect(manager.current()).toMatchObject({
+      phase: 'focus',
+      round: 1,
+      awaySince: T0 + 23 * MIN,
+      focusedMs: 0
+    });
+  });
+
+  it('keeps the clock stopped for as long as the person stays away', () => {
+    const manager = runningFor(12);
+    idle = FIVE_MIN;
+    manager.tick();
+    changes = [];
+
+    for (let minute = 13; minute <= 60; minute += 10) {
+      time = T0 + minute * MIN;
+      idle = (minute - 7) * MIN;
+      manager.tick();
+    }
+
+    expect(changes).toEqual([]);
+    expect(manager.current()?.focusedMs).toBe(0);
+  });
+
+  it('does not use up a pause', () => {
+    const manager = runningFor(12, { strictness: 'medium' });
+    idle = FIVE_MIN;
+    manager.tick();
+    time = T0 + 20 * MIN;
+    idle = 0;
+    manager.tick();
+
+    expect(manager.current()).toMatchObject({ pausesUsed: 0 });
+    expect(() => manager.pause()).not.toThrow();
+  });
+
+  it('counts the focus before the away stretch if the session is abandoned while away', () => {
+    const manager = runningFor(12);
+    idle = FIVE_MIN;
+    manager.tick();
+
+    time = T0 + 30 * MIN;
+    const ended = manager.abandon();
+
+    expect(ended).toMatchObject({ focusedMs: 7 * MIN, awayMs: 23 * MIN, endReason: 'abandoned' });
+  });
+
+  it('ignores being idle during a break and before the session starts', () => {
+    const manager = newManager();
+    manager.create(input());
+    idle = FIVE_MIN * 3;
+    manager.tick();
+    expect(manager.current()?.awaySince).toBeNull();
+
+    manager.start();
+    time = T0 + 27 * MIN;
+    idle = 0;
+    manager.tick();
+    expect(manager.current()?.phase).toBe('break');
+    idle = FIVE_MIN;
+    manager.tick();
+    expect(manager.current()?.awaySince).toBeNull();
+  });
+
+  it('uses the threshold it is given', () => {
+    const manager = new SessionManager(db, {
+      now: () => time,
+      idleMs: () => idle,
+      awayAfterMs: () => 60_000,
+      onChange: (state) => changes.push(state)
+    });
+    manager.create(input());
+    manager.start();
+    time = T0 + 10 * MIN;
+
+    idle = 59_000;
+    manager.tick();
+    expect(manager.current()?.awaySince).toBeNull();
+
+    idle = 60_000;
+    manager.tick();
+    expect(manager.current()?.awaySince).toBe(time - 60_000);
+  });
+
+  it('never marks anyone away when no idle source is given', () => {
+    const manager = new SessionManager(db, { now: () => time });
+    manager.create(input());
+    manager.start();
+
+    time = T0 + 20 * MIN;
+    manager.tick();
+
+    expect(manager.current()?.awaySince).toBeNull();
+  });
+
+  it('recovers a session that was away when the app closed, counting only the focus before', () => {
+    const first = runningFor(12);
+    idle = FIVE_MIN;
+    first.tick();
+
+    time = T0 + 3 * 60 * MIN;
+    const recovered = newManager().recover();
+
+    expect(recovered).toMatchObject({ endReason: 'abandoned', focusedMs: 7 * MIN });
+  });
+});
+
 describe('telling the caller when a session ends', () => {
   let ended: { id: number; state: SessionState }[];
 
@@ -334,12 +523,11 @@ describe('telling the caller when a session ends', () => {
 
   // A manager that also reports each ended session, like the app does to pay XP.
   function managerThatReportsEnds(): SessionManager {
-    return new SessionManager(
-      db,
-      () => time,
-      (state) => changes.push(state),
-      (id, state) => ended.push({ id, state })
-    );
+    return new SessionManager(db, {
+      now: () => time,
+      onChange: (state) => changes.push(state),
+      onEnded: (id, state) => ended.push({ id, state })
+    });
   }
 
   function savedId(): number {
@@ -394,14 +582,13 @@ describe('telling the caller when a session ends', () => {
 
   it('keeps the session intact even if the caller throws', () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const manager = new SessionManager(
-      db,
-      () => time,
-      (state) => changes.push(state),
-      () => {
+    const manager = new SessionManager(db, {
+      now: () => time,
+      onChange: (state) => changes.push(state),
+      onEnded: () => {
         throw new Error('payout failed');
       }
-    );
+    });
     manager.create(input());
     manager.start();
     changes = [];

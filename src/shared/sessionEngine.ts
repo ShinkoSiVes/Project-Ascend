@@ -4,6 +4,7 @@
 // without waiting and a state can be saved and restored at any moment.
 
 import {
+  awayMsSoFar,
   checkSessionConfig,
   elapsedMs,
   isValidTodoRef,
@@ -65,6 +66,8 @@ export function createSession(input: unknown): SessionState {
     elapsedBeforeSegment: 0,
     pausedAt: null,
     pausesUsed: 0,
+    awaySince: null,
+    awayMs: 0,
     focusedMs: 0,
     startedAt: null,
     endedAt: null,
@@ -109,6 +112,9 @@ function endSession(
     segmentStartedAt: null,
     elapsedBeforeSegment: 0,
     pausedAt: null,
+    // A stretch of being away that is still going on ends with the session.
+    awayMs: awayMsSoFar(state, at),
+    awaySince: null,
     focusedMs,
     endedAt: at,
     endReason: reason
@@ -175,6 +181,9 @@ export function pauseSession(state: SessionState, now: number): SessionState {
   if (current.pausedAt !== null) {
     throw new SessionError('The session is already paused');
   }
+  if (current.awaySince !== null) {
+    throw new SessionError('The clock has already stopped because you were away');
+  }
   if (pausesLeft(current) === 0) {
     throw new SessionError('No pauses left');
   }
@@ -195,6 +204,51 @@ export function resumeSession(state: SessionState, now: number): SessionState {
     throw new SessionError('The session is not paused');
   }
   return resumeAt(current, now);
+}
+
+// Stops the focus clock because nobody has touched the keyboard or mouse since `idleSince`. The
+// time already counted stops at that moment, not now, so the idle minutes before this call
+// never count as focus. It does not use up a pause. It only applies to a running focus round:
+// a pause, a break or an ended session is left alone, and so is a person who is already away.
+export function goAway(state: SessionState, idleSince: number, now: number): SessionState {
+  // Bring the session up to the moment they stopped, not to now, so a round that was due while
+  // they were away is not completed on their behalf.
+  const stoppedAt = Math.min(now, idleSince);
+  const current = advance(state, stoppedAt);
+
+  if (
+    current.phase !== 'focus' ||
+    current.pausedAt !== null ||
+    current.awaySince !== null ||
+    current.segmentStartedAt === null
+  ) {
+    return current;
+  }
+
+  // The clock cannot stop before it started running, for example if the round began after they
+  // last touched the keyboard.
+  const since = Math.max(stoppedAt, current.segmentStartedAt);
+  return {
+    ...current,
+    elapsedBeforeSegment: elapsedMs(current, since),
+    segmentStartedAt: null,
+    awaySince: since
+  };
+}
+
+// Starts the clock again, because there is input again. The time away is added up but is not
+// counted as focus.
+export function comeBack(state: SessionState, now: number): SessionState {
+  if (state.awaySince === null) {
+    return state;
+  }
+
+  return {
+    ...state,
+    segmentStartedAt: now,
+    awaySince: null,
+    awayMs: awayMsSoFar(state, now)
+  };
 }
 
 // Ends the session early. Focus time already done still counts, including the unfinished
