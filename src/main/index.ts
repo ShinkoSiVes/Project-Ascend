@@ -94,7 +94,7 @@ app.whenReady().then(() => {
       idleMs: () => powerMonitor.getSystemIdleTime() * 1000,
       awayAfterMs: () => getAwayAfterSeconds(db) * 1000
     });
-    const { sessions, runs } = services;
+    const { sessions, runs, watcher } = services;
 
     // A session left unfinished by a crash or a quit is closed, and days that passed while the app
     // was closed are settled, before anything else runs.
@@ -106,6 +106,7 @@ app.whenReady().then(() => {
     const ticker = setInterval(() => {
       try {
         sessions.tick();
+        watcher.tick();
         runs.tick();
       } catch (error) {
         console.error('Tick failed', error);

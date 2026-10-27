@@ -21,6 +21,7 @@ describe('runMigrations', () => {
 
     expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
     expect(tableNames(db)).toEqual([
+      'distraction_counts',
       'goals',
       'pets',
       'runs',
@@ -29,6 +30,25 @@ describe('runMigrations', () => {
       'todos',
       'xp_events'
     ]);
+  });
+
+  it('upgrades a version 5 database without losing its runs', () => {
+    const db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations.slice(0, 5));
+    db.prepare(
+      "INSERT INTO goals (title, target_hours, difficulty, strictness) VALUES ('old goal', 2, 3, 'hard')"
+    ).run();
+    db.prepare(
+      `INSERT INTO runs (goal_id, state, status, seed, stages_total, stage_reached, start_day)
+       VALUES (1, '{}', 'active', 1, 3, 1, '2026-10-27')`
+    ).run();
+    expect(userVersion(db)).toBe(5);
+
+    runMigrations(db);
+
+    expect(userVersion(db)).toBe(6);
+    expect(tableNames(db)).toContain('distraction_counts');
+    expect((db.prepare('SELECT COUNT(*) AS n FROM runs').get() as { n: number }).n).toBe(1);
   });
 
   it('upgrades a version 4 database without losing the pet and its XP', () => {
@@ -40,7 +60,7 @@ describe('runMigrations', () => {
 
     runMigrations(db);
 
-    expect(userVersion(db)).toBe(5);
+    expect(userVersion(db)).toBe(migrations[migrations.length - 1].version);
     expect(tableNames(db)).toContain('runs');
     expect((db.prepare('SELECT name FROM pets').get() as { name: string }).name).toBe('Fern');
     expect((db.prepare('SELECT SUM(amount) AS n FROM xp_events').get() as { n: number }).n).toBe(

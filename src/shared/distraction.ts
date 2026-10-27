@@ -34,6 +34,40 @@ export function isBlocked(app: string | null, blocklist: readonly string[]): boo
   return name !== '' && blocklist.some((entry) => normalizeApp(entry) === name);
 }
 
+export const MAX_BLOCKLIST_ENTRIES = 200;
+export const MAX_APP_NAME_LENGTH = 100;
+
+// The list a person starts with: every preset switched on.
+export function defaultBlocklist(): string[] {
+  return Object.values(BLOCKLIST_PRESETS).flat();
+}
+
+// The blocklist cleaned up: every name in its plain form, with blanks and repeats left out.
+export function normalizeBlocklist(entries: readonly string[]): string[] {
+  const names = entries.map(normalizeApp).filter((name) => name !== '');
+  return [...new Set(names)];
+}
+
+// Checks a blocklist that came from the renderer or from storage. It returns a message, or null
+// when the list is fine.
+export function checkBlocklist(input: unknown): string | null {
+  if (!Array.isArray(input)) {
+    return 'The blocklist must be a list of app names';
+  }
+  if (input.length > MAX_BLOCKLIST_ENTRIES) {
+    return `The blocklist can hold at most ${MAX_BLOCKLIST_ENTRIES} apps`;
+  }
+  for (const entry of input) {
+    if (typeof entry !== 'string') {
+      return 'Every app name must be text';
+    }
+    if (normalizeApp(entry).length > MAX_APP_NAME_LENGTH) {
+      return `An app name can be at most ${MAX_APP_NAME_LENGTH} characters`;
+    }
+  }
+  return null;
+}
+
 // A distraction only counts while the focus clock is really running: not in a break, not paused
 // and not away. Being on a blocked app at those times costs nothing.
 export function isFocusRunning(session: SessionState): boolean {

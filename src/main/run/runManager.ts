@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { Strictness } from '../../shared/goal';
 import {
   PERK_IDS,
   randomSeed,
@@ -13,6 +14,7 @@ import {
   abandonRun,
   advanceRun,
   createRun,
+  loseHp,
   pickPerk,
   recordFocus,
   rerollOffers
@@ -122,6 +124,19 @@ export class RunManager {
     // closed by crash recovery.
     const at = session.endedAt ?? this.now();
     const next = recordFocus(this.active.state, session.goalId, session.focusedMs, at);
+    if (next !== this.active.state) {
+      this.commit({ id: this.active.id, state: next });
+    }
+  }
+
+  // A distraction during a session costs the run HP, but only if the session was for the run's
+  // quest. With no active run, or a session for another quest, nothing happens.
+  loseHp(goalId: number, strictness: Strictness): void {
+    if (!this.active || this.active.state.goalId !== goalId) {
+      return;
+    }
+
+    const next = loseHp(this.active.state, strictness, this.now());
     if (next !== this.active.state) {
       this.commit({ id: this.active.id, state: next });
     }

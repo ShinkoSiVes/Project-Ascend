@@ -1,4 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { getBlocklist, recordDistraction } from './db/distractions';
+import { DistractionWatcher } from './distraction/distractionWatcher';
 import { PetService } from './pet/petService';
 import { RunManager } from './run/runManager';
 import { SessionManager } from './session/sessionManager';
@@ -7,6 +9,7 @@ export interface Services {
   pets: PetService;
   runs: RunManager;
   sessions: SessionManager;
+  watcher: DistractionWatcher;
 }
 
 export interface ServiceOptions {
@@ -20,10 +23,13 @@ export interface ServiceOptions {
   idleMs?: () => number;
   // After how many milliseconds without input the person counts as away.
   awayAfterMs?: () => number;
+  // The name of the app in front, or null if it cannot be read. Left out, no distraction is ever seen.
+  foregroundApp?: () => string | null;
 }
 
-// Builds the three services and connects them: when a session ends, it pays the pet and counts
-// toward the run. It uses nothing from Electron, so the whole chain can be tested.
+// Builds the services and connects them: when a session ends, it pays the pet and counts toward
+// the run, and a distraction during a session counts and costs the run HP. It uses nothing from
+// Electron, so the whole chain can be tested.
 export function createServices(db: DatabaseSync, options: ServiceOptions = {}): Services {
   const now = options.now ?? Date.now;
   const broadcast = options.broadcast ?? (() => {});
@@ -49,7 +55,19 @@ export function createServices(db: DatabaseSync, options: ServiceOptions = {}): 
     }
   });
 
-  return { pets, runs, sessions };
+  const watcher = new DistractionWatcher({
+    now,
+    foregroundApp: options.foregroundApp,
+    blocklist: () => getBlocklist(db),
+    session: () => sessions.current(),
+    onDistraction: (app, session) => {
+      // Only the app's name is counted. The HP goes only if the session is for the run's quest.
+      recordDistraction(db, app);
+      runs.loseHp(session.goalId, session.config.strictness);
+    }
+  });
+
+  return { pets, runs, sessions, watcher };
 }
 
 // Brings the services up to date at startup, in an order that matters:

@@ -367,6 +367,77 @@ describe('abandon, dismiss and history', () => {
   });
 });
 
+describe('loseHp', () => {
+  it('takes HP from the active run, saves it and tells the listener', () => {
+    const manager = newManager();
+    manager.start({ goalId });
+    changes = [];
+
+    manager.loseHp(goalId, 'medium');
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].hp).toBe(90);
+    expect(loadActiveRun(db)?.state.hp).toBe(90);
+  });
+
+  it('does nothing when there is no run', () => {
+    const manager = newManager();
+
+    manager.loseHp(goalId, 'medium');
+
+    expect(changes).toEqual([]);
+  });
+
+  it('does nothing for a session of another quest', () => {
+    const manager = newManager();
+    manager.start({ goalId });
+    changes = [];
+
+    manager.loseHp(goalId + 1, 'medium');
+
+    expect(changes).toEqual([]);
+    expect(loadActiveRun(db)?.state.hp).toBe(100);
+  });
+
+  it('fails the run at 0 HP on medium, and keeps it on hand as a result to read', () => {
+    const manager = newManager();
+    manager.start({ goalId });
+
+    for (let i = 0; i < 10; i++) {
+      manager.loseHp(goalId, 'medium');
+    }
+
+    expect(savedStatus()).toBe('failed');
+    expect(manager.current()).toMatchObject({ status: 'failed', failReason: 'hp', hp: 0 });
+  });
+
+  it('revives a gentle run once at half HP, then lets it fail', () => {
+    const manager = newManager();
+    manager.start({ goalId });
+
+    for (let i = 0; i < 10; i++) {
+      manager.loseHp(goalId, 'gentle');
+    }
+    expect(manager.current()).toMatchObject({ status: 'active', hp: 50, revivesUsed: 1 });
+
+    for (let i = 0; i < 5; i++) {
+      manager.loseHp(goalId, 'gentle');
+    }
+    expect(manager.current()).toMatchObject({ status: 'failed', failReason: 'hp' });
+  });
+
+  it('does nothing once the run has ended', () => {
+    const manager = newManager();
+    manager.start({ goalId });
+    manager.abandon();
+    changes = [];
+
+    manager.loseHp(goalId, 'medium');
+
+    expect(changes).toEqual([]);
+  });
+});
+
 describe('xpMultiplierFor', () => {
   function withBoost(manager: RunManager): void {
     manager.start({ goalId });
