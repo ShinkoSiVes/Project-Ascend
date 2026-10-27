@@ -67,6 +67,7 @@ Other enforcement:
 
 - A focus lock screen shows the timer, pet and active to-do. Leaving it triggers the strictness rule.
 - Time only counts while you are active in an allowed window. **Away detection:** after 5 minutes without keyboard or mouse input, the focus clock stops as of your last input, without using up a pause, and starts again when you come back. The time away is shown on the timer. The app only learns how long ago you last used the keyboard or mouse, never what you typed or clicked.
+- **Distractions:** you keep a blocklist of apps, starting from presets for games, chat and social apps, and you can edit it. A blocked app that stays in front for 10 seconds while the focus clock is running is a distraction and costs HP. It counts once per stretch: switching away and coming back, or moving to another blocked app, starts a new one. Nothing counts during a pause, a break or while you are away. Only the app's name is read, never window titles, and only names and counts are kept.
 - Quitting or killing the app mid-session on medium or hard counts as a failed stage.
 - A desktop app cannot fully prevent Task Manager. Enforcement works through consequences and friction, not a system lockdown.
 
